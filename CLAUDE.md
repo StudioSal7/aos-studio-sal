@@ -199,18 +199,20 @@ NEXT_PUBLIC_OPERATION_TZ=America/Sao_Paulo
 
 ### ✅ Infraestrutura conectada (concluído)
 
-- Supabase: projeto `rxeuqivufpgkejoxwjxf` (us-east-1) — **"Projeto A revolução 2"**
-- `.env.local` criado em raiz e em `apps/crm/` com todas as variáveis
-- `DATABASE_URL` usa o Transaction pooler (porta 6543) — OK para runtime; usar Session pooler (porta 5432) se precisar de migrations futuras com prepared statements
+- Supabase: projeto `fyhcpftzqczplmtykxke` (novo projeto após migração de `rxeuqivufpgkejoxwjxf`)
+- `.env.local` criado em raiz e em `apps/crm/` com todas as variáveis do novo projeto
+- `DATABASE_URL` usa Direct connection (porta 5432) — necessário para `db:migrate` e `db:push`
 - `drizzle.config.ts` carrega `.env.local` via `dotenv` (pacote instalado em `@repo/db`)
 - `db:seed` usa `tsx --env-file=../../.env.local` para carregar env
-- Migration `0000_pale_captain_stacy.sql` aplicada — 12 tabelas criadas + extensão `pg_trgm`
+- Migration `0000_pale_captain_stacy.sql` aplicada + coluna `pontuacao` adicionada via `ALTER TABLE` (não estava na migration original — foi adicionada ao schema após a geração inicial)
 - Seed executado — 11 estágios, 11 motivos de perda, 6 fontes populados
 - Usuário owner criado: `rodrigo@benitesalbuquerque.com.br` / senha temporária `Mudar@123`
 - Import legado executado: **191 leads** do CSV do Respondi importados, 2 duplicatas detectadas
   - CSV: `Respondi _ Formulário aplicação _ branding essencial - Página1.csv`
   - Script usa `RESPONDI_COLUMN_MAP` customizado (colunas do Respondi diferem do `DEFAULT_COLUMN_MAP`)
   - Relatório em `apps/crm/tmp/import-report.md`
+- Git inicializado + repositório conectado: `https://github.com/rodrigo3vium/aos-studio-sal`
+- Código pusado para branch `main` (145 arquivos, sem `.env.local`)
 
 ### ⚠️ Bugs corrigidos (não reverter)
 
@@ -219,6 +221,8 @@ NEXT_PUBLIC_OPERATION_TZ=America/Sao_Paulo
 - **Serialização de Date no kanban**: `KanbanBoard` é client component — `Date` objects convertidos para ISO strings antes de passar como props (em `kanban/page.tsx`); tipos atualizados em `kanban-board.tsx`
 - **`getHotLeads` ERR_INVALID_ARG_TYPE**: `sql` template literals do Drizzle com `Date` JavaScript direto causam `ERR_INVALID_ARG_TYPE` no Node.js (path de encoding interno). Corrigido em `server/queries/leads.ts` usando `lte()`/`gte()` em vez de `sql\`...\``.
 - **`typedRoutes` + `router.push`**: com `experimental: { typedRoutes: true }`, `router.push(string)` falha. Corrigido com cast `href as Route<string>` (tipo de `next`). Mesmo padrão se necessário em outros client components que chamam `router.push` com string.
+- **`import-legacy.ts` + `scheduledAt NOT NULL`**: script não passava `scheduledAt` ao criar reunião placeholder para leads com status `reunião agendada`/`reagendar encontro`. Corrigido em `apps/crm/scripts/import-legacy.ts` usando `lead.receivedAt` como fallback.
+- **`DATABASE_URL` com `%` na senha**: caractere `%` em senha do Supabase precisa ser URL-encoded como `%25` para não quebrar o parse URI do `postgres.js`. Corrigido no `.env.local` da raiz e de `apps/crm/`.
 
 ### ⚠️ Pendente antes do go-live
 
