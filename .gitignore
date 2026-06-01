@@ -14,8 +14,9 @@ out/
 .env.local
 .env.*.local
 
-# Drizzle
-drizzle/
+# Drizzle: migrations são código versionado (NÃO ignorar packages/db/drizzle/).
+# Ignorar apenas caches/artefatos locais do drizzle-kit, se houver.
+.drizzle/
 
 # Misc
 .DS_Store

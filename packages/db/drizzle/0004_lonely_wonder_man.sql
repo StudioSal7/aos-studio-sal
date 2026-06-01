@@ -1,0 +1,1 @@
+ALTER TABLE "commercial_analyses" ADD COLUMN "rubric_version" text;
