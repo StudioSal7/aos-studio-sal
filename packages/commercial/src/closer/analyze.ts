@@ -13,6 +13,9 @@ import {
   buildCloserScoringUserPrompt,
 } from './prompts';
 
+// Versão da régua da closer (critérios + pesos + prompt). Incrementar ao lapidar.
+export const CLOSER_RUBRIC_VERSION = 'closer-v1';
+
 // Pesos do overall_score: fechamento 30% · conducao 20% · tecnica_vendas 20%
 //                         escuta_ativa 10% · clareza 10% · rapport 10%
 // Calculado no código (não confiamos na aritmética do modelo).

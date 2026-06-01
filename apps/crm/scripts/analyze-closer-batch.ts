@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
-import { runCloserAnalysis } from '@repo/commercial';
+import { runCloserAnalysis, CLOSER_RUBRIC_VERSION } from '@repo/commercial';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -147,6 +147,7 @@ async function main() {
         sourceFile: filename,
         transcript: transcript.trim(),
         status: 'processando',
+        rubricVersion: CLOSER_RUBRIC_VERSION,
       })
       .returning({ id: schema.commercialAnalyses.id });
 

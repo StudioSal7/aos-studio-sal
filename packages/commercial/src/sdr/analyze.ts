@@ -13,6 +13,9 @@ import {
   buildSdrScoringUserPrompt,
 } from './prompts';
 
+// Versão da régua do SDR (critérios + pesos + prompt). Incrementar ao lapidar.
+export const SDR_RUBRIC_VERSION = 'sdr-v1';
+
 // Pesos do overall_score: conducao_agendamento 30% · qualificacao 25%
 //                         rapport 20% · clareza 15% · velocidade_resposta 10%
 // velocidade_resposta pode ser null → seu peso é redistribuído proporcionalmente

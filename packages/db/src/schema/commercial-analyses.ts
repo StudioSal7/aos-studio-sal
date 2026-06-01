@@ -44,6 +44,9 @@ export const commercialAnalyses = pgTable(
     status: analysisStatusEnum('status').notNull().default('pendente'),
     errorMessage: text('error_message'),
     analyzedBy: text('analyzed_by').notNull().default('gpt-4o'),
+    // Versão da régua (critérios/pesos/prompt) usada nesta análise — ex: 'closer-v1', 'sdr-v1'.
+    // Permite filtrar/comparar análises sem misturar histórico quando a régua evoluir.
+    rubricVersion: text('rubric_version'),
 
     createdBy: uuid('created_by').references(() => users.id),
 

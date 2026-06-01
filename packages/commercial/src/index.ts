@@ -6,6 +6,6 @@ export * from './types';
 export { callGPT4oJSON, OPENAI_MODEL } from './openai';
 
 // Closer habilitado na Fatia 2 (calibrado nas transcrições reais do Gemini/Meet):
-export { runCloserAnalysis, computeCloserOverallScore } from './closer/analyze';
+export { runCloserAnalysis, computeCloserOverallScore, CLOSER_RUBRIC_VERSION } from './closer/analyze';
 // SDR habilitado na Fatia 5 (pull sob demanda via Evolution API):
-export { runSdrAnalysis, computeSdrOverallScore } from './sdr/analyze';
+export { runSdrAnalysis, computeSdrOverallScore, SDR_RUBRIC_VERSION } from './sdr/analyze';

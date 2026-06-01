@@ -4,7 +4,12 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
-import { runCloserAnalysis, runSdrAnalysis } from '@repo/commercial';
+import {
+  runCloserAnalysis,
+  runSdrAnalysis,
+  CLOSER_RUBRIC_VERSION,
+  SDR_RUBRIC_VERSION,
+} from '@repo/commercial';
 import { requireAuth } from '@/server/auth';
 import type { ActionResult } from './leads';
 import { getLeadByWhatsappDigits, searchLeadsForSelector } from '@/server/queries/commercial';
@@ -47,6 +52,7 @@ export async function analyzeCloserAction(
       transcript: input.transcript.trim(),
       durationMinutes: input.durationMinutes ?? null,
       status: 'processando',
+      rubricVersion: CLOSER_RUBRIC_VERSION,
       createdBy: auth.userId,
     })
     .returning({ id: schema.commercialAnalyses.id });
@@ -118,6 +124,7 @@ async function persistSdrAnalysis(args: {
       sourceType: 'whatsapp',
       transcript: args.thread,
       status: 'processando',
+      rubricVersion: SDR_RUBRIC_VERSION,
       createdBy: args.createdBy,
     })
     .returning({ id: schema.commercialAnalyses.id });

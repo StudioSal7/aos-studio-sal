@@ -119,6 +119,7 @@ export default async function CloserAnalysisDetailPage({ params }: Props) {
           </span>
         )}
         <span>modelo: {analysis.analyzedBy}</span>
+        {analysis.rubricVersion && <span>régua: {analysis.rubricVersion}</span>}
       </div>
 
       {/* Erro */}

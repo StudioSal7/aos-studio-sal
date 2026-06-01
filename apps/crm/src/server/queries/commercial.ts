@@ -74,6 +74,7 @@ export async function getAnalysisById(id: string) {
       status: schema.commercialAnalyses.status,
       errorMessage: schema.commercialAnalyses.errorMessage,
       analyzedBy: schema.commercialAnalyses.analyzedBy,
+      rubricVersion: schema.commercialAnalyses.rubricVersion,
       leadId: schema.commercialAnalyses.leadId,
       leadName: schema.leads.name,
       createdAt: schema.commercialAnalyses.createdAt,
