@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import type { ComponentProps, ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -12,6 +13,8 @@ import {
   Shield,
   ShoppingBag,
   Target,
+  ClipboardCheck,
+  MessageSquareText,
   type LucideIcon,
 } from 'lucide-react';
 import { requireAuth } from '@/server/auth';
@@ -46,6 +49,8 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
           <NavItem href="/trafego" label="tráfego pago." icon={Target} />
           {isOwner && <NavItem href="/vendas-sal" label="vendas sal." icon={ShoppingBag} />}
           <NavItem href="/saude" label="saúde dos dados." icon={Activity} />
+          <NavItem href={"/analise/closer" as Route<string>} label="análise closer." icon={ClipboardCheck} />
+          <NavItem href={"/analise/sdr" as Route<string>} label="análise sdr." icon={MessageSquareText} />
           <NavItem href="/teste" label="teste." icon={Target} />
           {isOwner && <NavItem href="/admin" label="admin." icon={Shield} />}
         </nav>

@@ -12,4 +12,5 @@ export * from './lead-field-audit';
 export * from './lead-action-log';
 export * from './lead-intake-log';
 export * from './sal-sales';
+export * from './commercial-analyses';
 export * from './relations';

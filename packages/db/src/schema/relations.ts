@@ -1,4 +1,5 @@
 import { relations } from 'drizzle-orm';
+import { commercialAnalyses } from './commercial-analyses';
 import { leadActionLog } from './lead-action-log';
 import { leadFieldAudit } from './lead-field-audit';
 import { leadIntakeLog } from './lead-intake-log';
@@ -43,6 +44,18 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
   fieldAudit: many(leadFieldAudit),
   actionLog: many(leadActionLog),
   intakeLog: many(leadIntakeLog),
+  commercialAnalyses: many(commercialAnalyses),
+}));
+
+export const commercialAnalysesRelations = relations(commercialAnalyses, ({ one }) => ({
+  lead: one(leads, {
+    fields: [commercialAnalyses.leadId],
+    references: [leads.id],
+  }),
+  createdByUser: one(users, {
+    fields: [commercialAnalyses.createdBy],
+    references: [users.id],
+  }),
 }));
 
 export const meetingsRelations = relations(meetings, ({ one }) => ({

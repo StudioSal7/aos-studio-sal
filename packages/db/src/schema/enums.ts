@@ -40,3 +40,14 @@ export const intakeSourceEnum = pgEnum('intake_source', [
 ]);
 export const intakeStatusEnum = pgEnum('intake_status', ['ok', 'duplicate_upsert', 'failed']);
 export const actionCompletionKindEnum = pgEnum('action_completion_kind', ['done', 'replaced']);
+
+// Motor de análise comercial (CallScore) — closer e SDR
+export const analyzerEnum = pgEnum('analyzer', ['closer', 'sdr']);
+export const analysisStatusEnum = pgEnum('analysis_status', [
+  'pendente',
+  'processando',
+  'concluido',
+  'erro',
+  // SDR: conversa puxada não é de pré-venda (contato frio, recado interno, etc.).
+  'nao_aplicavel',
+]);
