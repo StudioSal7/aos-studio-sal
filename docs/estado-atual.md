@@ -7,11 +7,13 @@
 ## O que foi construído (Fatias 0–4 concluídas)
 
 ### Pacote `@repo/commercial` (puro, sem DB)
-- `openai.ts` — `callGPT4oJSON` (**gpt-4o-mini**, temp 0.3, JSON mode, retry 3×) — trocado de `gpt-4o` porque transcrições longas (~23k tokens) excedem o limite de 10k TPM do Tier 1 da OpenAI
-- `types.ts` — tipos de ambas as réguas (`CloserScoreBreakdown`, `CloserExtractedData`, `SdrScoreBreakdown`…)
-- `closer/prompts.ts` — prompts calibrados nas transcrições reais da Studio Sal ("Anotações do Gemini")
-- `closer/analyze.ts` — `runCloserAnalysis` (score ponderado calculado no código, parse defensivo)
-- **9 testes passando**
+- `openai.ts` — `callGPT4oJSON` (**gpt-4o**, temp 0.3, JSON mode, `max_tokens`, retry 5× com backoff/Retry-After em 429). Lança `TruncatedResponseError` em `finish_reason='length'` (nunca aceita JSON parcial). Param opcional `{ model, maxTokens }`. Tier OpenAI atual: gpt-4o = **30k TPM** (Tier 1).
+- `types.ts` — tipos de ambas as réguas. Closer v2: `CloserMethodDossier` (detecção + 7 blocos + dossiê qualitativo), `CloserBlockScores`, `CloserDetection`, `CloserEvidence`, `CloserRecommendation`, `CloserExtractedData`, `SdrScoreBreakdown`…
+- `closer/prompts.ts` — **régua Winning by Design (closer-v2)**: avalia execução do método (não se fechou). 1 prompt unificado → dossiê + extração de negócio numa só chamada (transcrição enviada 1×).
+- `closer/transcript-cleaner.ts` — limpador determinístico do Gemini (remove BOM/data/header/timestamps/branco/`�`, colapsa falante consecutivo; preserva falas/citações). Puro, **7 testes**.
+- `closer/compress.ts` — compressão extrativa de fallback (mini), só se exceder `TRANSCRIPT_CEILING=22000` após limpeza. Seleciona turnos verbatim + trava determinística head+tail.
+- `closer/analyze.ts` — `runCloserAnalysis` (limpa → comprime se preciso → 1 call gpt-4o → parse defensivo). **Pesos variáveis por etapa** (FECHAMENTO/DIAGNÓSTICO), `computeCloserOverallScore(blocos, etapa)` = soma ponderada 0–10 ×10 → 0–100. `CLOSER_RUBRIC_VERSION='closer-v2'`.
+- **13 testes do closer passando** (pesos ambas etapas, parse do dossiê, extração)
 
 ### Schema Drizzle (`packages/db`)
 - Tabela `commercial_analyses` (tabela única + `analyzer` discriminador `closer|sdr`)
@@ -26,34 +28,39 @@
 - `server/queries/commercial.ts` — `listAnalyses` (inclui `extractedData` para exibir Fechou/valor na lista), `getAnalysisById`, `getAnalysisKpis`, `searchLeadsForSelector`
 - `server/actions/commercial.ts` — `analyzeCloserAction`, `deleteAnalysisAction`, `searchLeadsAction`
 - Rotas:
-  - `/analise/closer` — lista + KPIs (total, score médio, no mês, fechamentos). Lista com **score ring SVG** (REGULAR/BOM/EXCELENTE/ÓTIMO), badge **Fechou / Não fechou** e valor em BRL quando disponível
+  - `/analise/closer` — lista + KPIs (total, score médio, no mês, fechamentos). Lista com **score ring SVG** (0–100, REGULAR/BOM/EXCELENTE/ÓTIMO), badge **Fechou / Não fechou** e valor em BRL quando disponível
   - `/analise/closer/nova` — form com seletor de lead (`maxDuration=300`, síncrono)
-  - `/analise/closer/[id]` — detalhe: score ring, breakdown 6 critérios, extração, transcrição colapsável
+  - `/analise/closer/[id]` — detalhe v2: **header de detecção** (produto · etapa · decisores · lead qualificado), score ring 0–100, **breakdown 7 blocos A–G** (pesos do dossiê), **leitura em 1 linha**, **desejo + implicação**, **3 acertos + 3 falhas com trecho literal**, **sinais vermelhos**, **3 recomendações com script copiável**, painel "dados extraídos", transcrição colapsável
   - `/analise/sdr` — placeholder (em breve)
 - Sidebar: `análise closer.` (ClipboardCheck) + `análise sdr.` (MessageSquareText)
-- Script `pnpm --filter crm analyze-closer-batch -- <dir>` — processa pasta de `.txt`, idempotente, gera `tmp/analise-closer-report.md`. **7 calls da Studio Sal processadas** (acervo em `THE SHIRE/SAL/TRANSCRIÇÃO`). Scores: Fernanda 88, Beatriz 82, Marina 82, Mariana 77, Nátalie 74, Leticia 73, Nathália 65.
+- Script `pnpm --filter crm analyze-closer-batch -- <dir>` (ou `node_modules/.bin/tsx --env-file=.env.local scripts/analyze-closer-batch.ts <dir>`) — processa pasta de `.txt`, idempotente, **throttle `THROTTLE_MS=65000`** entre calls (respeita TPM), grava modelo/compressão/etapa em `tmp/analise-closer-report.md`. **8 calls reprocessadas com a régua v2** (acervo em `THE SHIRE/SAL/TRANSCRIÇÃO`). Scores caem vs v1 — a régua de método é mais severa (ex.: Beatriz 82→56).
 
 ### Verificação
 - `pnpm typecheck` — 0 erros
-- `pnpm test` — 173 passando, 8 skipped (commercial: 21 closer+sdr · crm: 152 incl. 10 thread-builder)
+- `pnpm test` — 184 passando, 8 skipped (commercial: 32 incl. cleaner/closer-v2/sdr · crm: 152)
 
 ---
 
 ## Réguas implementadas
 
-### Closer (6 critérios — `runCloserAnalysis` ✅ funcionando)
-| Critério | Peso |
-|---|---|
-| `fechamento` | 30% |
-| `conducao` | 20% |
-| `tecnica_vendas` | 20% |
-| `escuta_ativa` | 10% |
-| `clareza` | 10% |
-| `rapport` | 10% |
+### Closer (régua Winning by Design — `closer-v2`, 7 blocos A–G, `runCloserAnalysis` ✅)
+Avalia EXECUÇÃO DO MÉTODO (venda consultiva), **nunca se fechou**. Pesos **variáveis por etapa**:
 
-**Extração:** `fechou` (bool), `programa_interesse`, `orcamento_valor`, `forma_pagamento`, `objecoes`, `nivel_interesse`, `proximos_passos`, `concorrentes_mencionados`, `insights_adicionais`
+| Bloco | FECHAMENTO | DIAGNÓSTICO |
+|---|---|---|
+| A `abertura` | 10% | 10% |
+| B `conducao` | 7,5% | 10% |
+| C `diagnostico` | 15% | 25% |
+| D `desejo` | 20% | 15% |
+| E `implicacao` | 20% | 15% |
+| F `urgencia` | 7,5% | 10% |
+| G `fechamento` | 20% | 15% |
 
-**Input:** transcrição "Anotações do Gemini" do Google Meet (falantes identificados por nome completo)
+Notas dos blocos 0–10; global = soma ponderada ×10 → 0–100 (calculada no código). **Detecção** prévia: produto, etapa, nº decisores (e 2º conduzido), lead qualificado. **Dossiê**: leitura em 1 linha, análise desejo+implicação, 3 acertos + 3 falhas (com trecho literal), sinais vermelhos, 3 recomendações com script.
+
+**Extração de negócio (mesma chamada):** `fechou` (bool), `dor_principal`, `dores_secundarias`, `programa_interesse`, `orcamento_mencionado`, `orcamento_valor`, `forma_pagamento`, `objecoes`, `nivel_interesse`, `proximos_passos`, `concorrentes_mencionados`, `insights_adicionais`
+
+**Input:** transcrição "Anotações do Gemini" do Google Meet (falantes por nome completo). Limpa por código + comprimida (extrativa) só se exceder o teto de tokens.
 
 ### SDR (5 critérios — `runSdrAnalysis` ✅ implementado e calibrado)
 | Critério | Peso |

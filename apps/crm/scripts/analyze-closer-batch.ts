@@ -12,7 +12,8 @@
  * - Extracts title from filename: pattern "Studio Sal & <Name>  - ..." → Name.
  *   Falls back to cleaned filename.
  * - Idempotent: skips files whose source_file is already in commercial_analyses.
- * - Throttle: 1 file at a time (sequential) to avoid OpenAI rate limits.
+ * - Throttle: 1 file at a time (sequential) + delay between API calls. Cada call
+ *   gpt-4o consome quase todo o TPM (30k Tier 1) → ~1 call/min. THROTTLE_MS espaça.
  * - Writes a report to apps/crm/tmp/analise-closer-report.md.
  *
  * Requires: DATABASE_URL and OPENAI_API_KEY in environment.
@@ -27,6 +28,11 @@ import * as schema from '@repo/db/schema';
 import { runCloserAnalysis, CLOSER_RUBRIC_VERSION } from '@repo/commercial';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Espaçamento entre chamadas que consomem TPM do gpt-4o. Com 30k TPM (Tier 1)
+// e cada call usando ~30k (prompt + transcrição + output reservado), ~1 call/min.
+const THROTTLE_MS = Number(process.env.CLOSER_BATCH_THROTTLE_MS ?? 65000);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ── Argument parsing ────────────────────────────────────────────────────────
 
@@ -91,7 +97,17 @@ async function getExistingSourceFiles(): Promise<Set<string>> {
 
 type BatchOutcome =
   | { kind: 'skipped'; file: string; reason: 'already_exists' }
-  | { kind: 'analyzed'; file: string; title: string; callDate: string; id: string; score: number }
+  | {
+      kind: 'analyzed';
+      file: string;
+      title: string;
+      callDate: string;
+      id: string;
+      score: number;
+      etapa: string;
+      model: string;
+      compressed: boolean;
+    }
   | { kind: 'failed'; file: string; title: string; error: string };
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -160,21 +176,25 @@ async function main() {
 
     try {
       const result = await runCloserAnalysis({ transcript: transcript.trim() });
+      const analyzedBy = result.compressed ? `${result.model} (comprimido)` : result.model;
 
       await db
         .update(schema.commercialAnalyses)
         .set({
           overallScore: result.overallScore,
-          scoreBreakdown: result.breakdown,
+          // Dossiê de método completo (detecção + 7 blocos + dossiê qualitativo).
+          scoreBreakdown: result.dossier,
           scoreSummary: result.summary,
           extractedData: result.extracted,
           status: 'concluido',
-          analyzedBy: 'gpt-4o',
+          analyzedBy,
           updatedAt: new Date(),
         })
         .where(eq(schema.commercialAnalyses.id, analysisId));
 
-      console.log(`  ✓ done  score=${result.overallScore}  ${title}`);
+      const etapa = result.dossier.deteccao.etapa;
+      const tag = result.compressed ? ' [comprimido]' : '';
+      console.log(`  ✓ done  score=${result.overallScore}  etapa=${etapa}${tag}  ${title}`);
       outcomes.push({
         kind: 'analyzed',
         file: filename,
@@ -182,6 +202,9 @@ async function main() {
         callDate,
         id: analysisId,
         score: result.overallScore,
+        etapa,
+        model: result.model,
+        compressed: result.compressed,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -195,6 +218,11 @@ async function main() {
     }
 
     processed++;
+
+    // Throttle: espaça a próxima call que consome TPM (não dorme após o último).
+    if (filePath !== files[files.length - 1]) {
+      await sleep(THROTTLE_MS);
+    }
   }
 
   writeReport();
@@ -232,10 +260,11 @@ function writeReport() {
 
   if (analyzed.length > 0) {
     lines.push('## Análises concluídas', '');
-    lines.push('| Call | Data | Score | ID |');
-    lines.push('|------|------|-------|----|');
+    lines.push('| Call | Data | Etapa | Score | Modelo | ID |');
+    lines.push('|------|------|-------|-------|--------|----|');
     for (const a of analyzed) {
-      lines.push(`| ${a.title} | ${a.callDate} | ${a.score} | ${a.id} |`);
+      const model = a.compressed ? `${a.model} (comprimido)` : a.model;
+      lines.push(`| ${a.title} | ${a.callDate} | ${a.etapa} | ${a.score} | ${model} | ${a.id} |`);
     }
     lines.push('');
   }

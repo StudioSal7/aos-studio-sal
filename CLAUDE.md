@@ -223,6 +223,7 @@ NEXT_PUBLIC_OPERATION_TZ=America/Sao_Paulo
 - **`typedRoutes` + `router.push`**: com `experimental: { typedRoutes: true }`, `router.push(string)` falha. Corrigido com cast `href as Route<string>` (tipo de `next`). Mesmo padrão se necessário em outros client components que chamam `router.push` com string.
 - **`import-legacy.ts` + `scheduledAt NOT NULL`**: script não passava `scheduledAt` ao criar reunião placeholder para leads com status `reunião agendada`/`reagendar encontro`. Corrigido em `apps/crm/scripts/import-legacy.ts` usando `lead.receivedAt` como fallback.
 - **`DATABASE_URL` com `%` na senha**: caractere `%` em senha do Supabase precisa ser URL-encoded como `%25` para não quebrar o parse URI do `postgres.js`. Corrigido no `.env.local` da raiz e de `apps/crm/`.
+- **`sql` template + `Date` em `getAnalysisKpis`**: mesmo padrão do `getHotLeads` — `startOfMonth` (Date JS) interpolado em `sql\`...\`` causa `ERR_INVALID_ARG_TYPE`. Corrigido em `apps/crm/src/server/queries/commercial.ts` usando `.toISOString()::timestamptz` em vez de passar o objeto Date diretamente.
 
 ### ⚠️ Pendente antes do go-live
 
@@ -261,12 +262,14 @@ NEXT_PUBLIC_OPERATION_TZ=America/Sao_Paulo
 - **Lost/Paid usa Sheet, não modal** — `Sheet` do shadcn permite que o board fique visível ao fundo. Cancelar (Esc) ou clicar fora faz rollback do optimistic move.
 - **Lead detail com tabs e URL state** — tab ativa persiste em `?tab=atividade` via `searchParams` no Server Component. Default: `atividade`.
 - **Cmd+K context-aware** — ações de "lead atual" (mover estágio, agendar, nota) só aparecem na rota `/leads/[id]`. Usa `usePathname()` para detectar contexto.
-- **`sql` template + Date → usar operadores tipados** — interpolar `Date` JS em `sql\`...\`` do Drizzle causa `ERR_INVALID_ARG_TYPE`. Sempre usar `lte()`, `gte()`, `eq()` etc.
+- **`sql` template + Date → usar operadores tipados ou `.toISOString()`** — interpolar `Date` JS em `sql\`...\`` do Drizzle causa `ERR_INVALID_ARG_TYPE`. Em operadores Drizzle usar `lte()`, `gte()`, `eq()`. Em expressões `FILTER (WHERE ...)` que exigem `sql\`...\``, usar `.toISOString()` + cast `::timestamptz`.
 - **Dedup por email OR whatsapp normalizado E.164** — webhook faz upsert se encontrar match.
 - **Middleware não protege `/api/`** — autenticação das routes de API é feita internamente (`CRON_SECRET`, `WEBHOOK_TOKEN_RESPONDI`).
 - **Design system via tokens CSS, não classes** — cores semânticas (`canvas/paper/ink/wood/leaf/clay`) definidas em `@theme` no `globals.css`. Radius zerado no `@theme` (não no JSX). Tipografia hierárquica como `@utility` compostos (`text-display/h2/h3/body/btn/micro`). Adicionar tokens aqui, não criar classes utilitárias ad hoc.
 - **`rounded-full` é a única exceção ao radius zero** — preservado propositalmente para dots de status e avatares.
 - **Lowercase editorial via CSS** — `text-transform: lowercase` nas utilities `text-display/h2/h3/btn`. Usar `normal-case` para exceções pontuais (nomes próprios).
+- **Análise closer = régua v2 (Winning by Design, `@repo/commercial`)** — avalia EXECUÇÃO DO MÉTODO, nunca se fechou. 7 blocos A–G (0–10), **pesos variáveis por etapa** (`fechamento`/`diagnostico`), nota global calculada no código ×10 → **0–100** (mantém o anel/CHECK). Dossiê (detecção + leitura + desejo/implicação + acertos/falhas com trecho literal + sinais vermelhos + recomendações com script) gravado no jsonb `score_breakdown`; extração de negócio no `extracted_data`. **1 chamada gpt-4o** unificada. Detalhe completo em [`docs/estado-atual.md`](./docs/estado-atual.md).
+- **gpt-4o em todas as análises (closer e SDR), nunca fatiar a transcrição** — Tier OpenAI atual gpt-4o = 30k TPM. Throughput: limpeza determinística por código (preserva falas) → compressão extrativa via mini só se exceder `TRANSCRIPT_CEILING=22000` → batch com throttle `THROTTLE_MS=65000` + backoff/Retry-After em 429. `openai.ts` falha explicitamente em `finish_reason='length'` (nunca grava dossiê parcial).
 
 ---
 

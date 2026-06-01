@@ -1,76 +1,212 @@
-import { callGPT4oJSON } from '../openai';
+import { callGPT4oJSON, OPENAI_MODEL } from '../openai';
 import type {
   CloserAnalysisResult,
+  CloserBlockScores,
+  CloserDetection,
+  CloserEtapa,
+  CloserEvidence,
   CloserExtractedData,
-  CloserScoreBreakdown,
-  CloserScoreResponse,
+  CloserMethodDossier,
+  CloserRecommendation,
+  NivelInteresse,
   RunCloserAnalysisInput,
 } from '../types';
-import {
-  buildCloserExtractionSystemPrompt,
-  buildCloserExtractionUserPrompt,
-  buildCloserScoringSystemPrompt,
-  buildCloserScoringUserPrompt,
-} from './prompts';
+import { compressTranscript } from './compress';
+import { buildCloserScoringSystemPrompt, buildCloserScoringUserPrompt } from './prompts';
+import { cleanGeminiTranscript, estimateTokens } from './transcript-cleaner';
 
-// Versão da régua da closer (critérios + pesos + prompt). Incrementar ao lapidar.
-export const CLOSER_RUBRIC_VERSION = 'closer-v1';
+// Versão da régua da closer (Winning by Design — critérios + pesos + prompt).
+export const CLOSER_RUBRIC_VERSION = 'closer-v2';
 
-// Pesos do overall_score: fechamento 30% · conducao 20% · tecnica_vendas 20%
-//                         escuta_ativa 10% · clareza 10% · rapport 10%
-// Calculado no código (não confiamos na aritmética do modelo).
-const CLOSER_WEIGHTS: Record<keyof CloserScoreBreakdown, number> = {
-  fechamento: 0.3,
-  conducao: 0.2,
-  tecnica_vendas: 0.2,
-  escuta_ativa: 0.1,
-  clareza: 0.1,
-  rapport: 0.1,
+// Teto de tokens da transcrição enviada ao gpt-4o. A OpenAI reserva
+// prompt + max_tokens contra o TPM; com 30k TPM (Tier 1), prompt (~2,5k) e
+// max_tokens (4096) reservados, sobra ~23k → teto conservador de 22k.
+// Ajustável por env caso o tier mude (ver Etapa 0.1 do plano).
+const TRANSCRIPT_CEILING = Number(process.env.CLOSER_TRANSCRIPT_CEILING ?? 22000);
+
+// Folga generosa pro dossiê (JSON grande); guarda de truncamento em openai.ts.
+const MAX_OUTPUT_TOKENS = 4096;
+
+// Pesos por etapa (somam 1). Aplicados no código — não confiamos na aritmética do modelo.
+const PESOS_FECHAMENTO: CloserBlockScores = {
+  abertura: 0.1,
+  conducao: 0.075,
+  diagnostico: 0.15,
+  desejo: 0.2,
+  implicacao: 0.2,
+  urgencia: 0.075,
+  fechamento: 0.2,
+};
+const PESOS_DIAGNOSTICO: CloserBlockScores = {
+  abertura: 0.1,
+  conducao: 0.1,
+  diagnostico: 0.25,
+  desejo: 0.15,
+  implicacao: 0.15,
+  urgencia: 0.1,
+  fechamento: 0.15,
 };
 
-export function computeCloserOverallScore(breakdown: CloserScoreBreakdown): number {
-  const raw =
-    breakdown.fechamento * CLOSER_WEIGHTS.fechamento +
-    breakdown.conducao * CLOSER_WEIGHTS.conducao +
-    breakdown.tecnica_vendas * CLOSER_WEIGHTS.tecnica_vendas +
-    breakdown.escuta_ativa * CLOSER_WEIGHTS.escuta_ativa +
-    breakdown.clareza * CLOSER_WEIGHTS.clareza +
-    breakdown.rapport * CLOSER_WEIGHTS.rapport;
-  return Math.round(Math.max(0, Math.min(100, raw)));
+export function pesosPorEtapa(etapa: CloserEtapa): CloserBlockScores {
+  return etapa === 'diagnostico' ? PESOS_DIAGNOSTICO : PESOS_FECHAMENTO;
 }
 
-function parseScoreResponse(raw: unknown): CloserScoreResponse {
-  if (!raw || typeof raw !== 'object') throw new Error('Score response não é um objeto');
+/**
+ * Nota global 0–100 a partir dos blocos 0–10 e da etapa.
+ * Soma ponderada (0–10) × 10 → 0–100, arredondada e clampada.
+ */
+export function computeCloserOverallScore(
+  blocos: CloserBlockScores,
+  etapa: CloserEtapa,
+): number {
+  const pesos = pesosPorEtapa(etapa);
+  const raw10 =
+    blocos.abertura * pesos.abertura +
+    blocos.conducao * pesos.conducao +
+    blocos.diagnostico * pesos.diagnostico +
+    blocos.desejo * pesos.desejo +
+    blocos.implicacao * pesos.implicacao +
+    blocos.urgencia * pesos.urgencia +
+    blocos.fechamento * pesos.fechamento;
+  return Math.round(Math.max(0, Math.min(100, raw10 * 10)));
+}
+
+/**
+ * Analisa uma transcrição de call da Studio Sal pela régua Winning by Design.
+ *
+ * Função pura — não toca o banco. Limpa a transcrição (determinístico),
+ * comprime extrativamente se exceder o teto, faz 1 chamada gpt-4o (dossiê +
+ * extração) e retorna o resultado estruturado. Persistência fica na action/script.
+ */
+export async function runCloserAnalysis(
+  input: RunCloserAnalysisInput,
+): Promise<CloserAnalysisResult> {
+  const { transcript } = input;
+  if (!transcript.trim()) throw new Error('Transcrição vazia');
+
+  // 1) Limpeza determinística (custo zero, preserva falas).
+  const { cleaned } = cleanGeminiTranscript(transcript);
+  const base = cleaned.trim() ? cleaned : transcript.trim();
+
+  // 2) Compressão extrativa só se ainda exceder o teto.
+  let compressed = false;
+  let prepared = base;
+  if (estimateTokens(base) > TRANSCRIPT_CEILING) {
+    const r = await compressTranscript(base, TRANSCRIPT_CEILING);
+    prepared = r.transcript;
+    compressed = r.compressed;
+  }
+
+  // 3) Uma chamada gpt-4o → dossiê + extração.
+  const raw = await callGPT4oJSON(
+    buildCloserScoringSystemPrompt(),
+    buildCloserScoringUserPrompt(prepared),
+    { maxTokens: MAX_OUTPUT_TOKENS },
+  );
+
+  const { dossier, extracted } = parseDossierResponse(raw);
+  const overallScore = computeCloserOverallScore(dossier.blocos, dossier.deteccao.etapa);
+
+  return {
+    overallScore,
+    dossier,
+    summary: dossier.leitura_1_linha,
+    extracted,
+    model: OPENAI_MODEL,
+    compressed,
+  };
+}
+
+// ── parsing ───────────────────────────────────────────────────────────────
+
+function parseDossierResponse(raw: unknown): {
+  dossier: CloserMethodDossier;
+  extracted: CloserExtractedData;
+} {
+  if (!raw || typeof raw !== 'object') throw new Error('Resposta não é um objeto');
   const r = raw as Record<string, unknown>;
 
-  const bd = r['breakdown'];
-  if (!bd || typeof bd !== 'object') throw new Error('breakdown ausente na resposta de score');
+  const deteccao = parseDetection(r['deteccao']);
+
+  const bd = r['blocos'];
+  if (!bd || typeof bd !== 'object') throw new Error('blocos ausente na resposta');
   const b = bd as Record<string, unknown>;
-
-  const breakdown: CloserScoreBreakdown = {
-    escuta_ativa: assertNumber(b['escuta_ativa'], 'escuta_ativa'),
-    clareza: assertNumber(b['clareza'], 'clareza'),
-    tecnica_vendas: assertNumber(b['tecnica_vendas'], 'tecnica_vendas'),
-    conducao: assertNumber(b['conducao'], 'conducao'),
-    rapport: assertNumber(b['rapport'], 'rapport'),
-    fechamento: assertNumber(b['fechamento'], 'fechamento'),
+  const blocos: CloserBlockScores = {
+    abertura: assertBlock(b['abertura'], 'abertura'),
+    conducao: assertBlock(b['conducao'], 'conducao'),
+    diagnostico: assertBlock(b['diagnostico'], 'diagnostico'),
+    desejo: assertBlock(b['desejo'], 'desejo'),
+    implicacao: assertBlock(b['implicacao'], 'implicacao'),
+    urgencia: assertBlock(b['urgencia'], 'urgencia'),
+    fechamento: assertBlock(b['fechamento'], 'fechamento'),
   };
 
-  const summary = typeof r['summary'] === 'string' ? r['summary'] : '';
+  const dossier: CloserMethodDossier = {
+    deteccao,
+    blocos,
+    pesos: pesosPorEtapa(deteccao.etapa),
+    leitura_1_linha: strOrEmpty(r['leitura_1_linha']),
+    analise_desejo: strOrEmpty(r['analise_desejo']),
+    analise_implicacao: strOrEmpty(r['analise_implicacao']),
+    acertos: parseEvidences(r['acertos']),
+    falhas: parseEvidences(r['falhas']),
+    sinais_vermelhos: strArrayOrEmpty(r['sinais_vermelhos']),
+    recomendacoes: parseRecommendations(r['recomendacoes']),
+  };
 
+  const extracted = parseExtraction(r['extracao']);
+
+  return { dossier, extracted };
+}
+
+function parseDetection(v: unknown): CloserDetection {
+  const d = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  const etapa: CloserEtapa = d['etapa'] === 'diagnostico' ? 'diagnostico' : 'fechamento';
+  const num = Number(d['num_decisores']);
+  const numDecisores = num === 2 ? 2 : 1;
   return {
-    overall_score: computeCloserOverallScore(breakdown),
-    breakdown,
-    summary,
+    produto: strOrNull(d['produto']) ?? 'indefinido',
+    etapa,
+    num_decisores: numDecisores,
+    segundo_decisor_conduzido:
+      numDecisores === 2
+        ? typeof d['segundo_decisor_conduzido'] === 'boolean'
+          ? (d['segundo_decisor_conduzido'] as boolean)
+          : false
+        : null,
+    lead_qualificado: d['lead_qualificado'] === false ? false : Boolean(d['lead_qualificado']),
+    lead_qualificado_obs: strOrNull(d['lead_qualificado_obs']),
   };
 }
 
-function parseExtractionResponse(raw: unknown): CloserExtractedData {
-  if (!raw || typeof raw !== 'object') throw new Error('Extraction response não é um objeto');
-  const r = raw as Record<string, unknown>;
+function parseEvidences(v: unknown): CloserEvidence[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((item) => {
+      const o = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
+      const texto = strOrNull(o['texto']);
+      if (!texto) return null;
+      return { texto, trecho: strOrNull(o['trecho']) ?? '' };
+    })
+    .filter((x): x is CloserEvidence => x !== null);
+}
 
+function parseRecommendations(v: unknown): CloserRecommendation[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((item) => {
+      const o = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
+      const texto = strOrNull(o['texto']);
+      if (!texto) return null;
+      return { texto, script: strOrNull(o['script']) ?? '' };
+    })
+    .filter((x): x is CloserRecommendation => x !== null);
+}
+
+function parseExtraction(v: unknown): CloserExtractedData {
+  const r = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
   return {
-    fechou: typeof r['fechou'] === 'boolean' ? r['fechou'] : null,
+    fechou: typeof r['fechou'] === 'boolean' ? (r['fechou'] as boolean) : null,
     dor_principal: strOrNull(r['dor_principal']),
     dores_secundarias: strArrayOrNull(r['dores_secundarias']),
     programa_interesse: strOrNull(r['programa_interesse']),
@@ -85,47 +221,20 @@ function parseExtractionResponse(raw: unknown): CloserExtractedData {
   };
 }
 
-/**
- * Analisa uma transcrição de call de fechamento da Studio Sal.
- *
- * Função pura — não toca o banco. Faz 2 chamadas GPT-4o (scoring + extração)
- * e retorna o resultado estruturado. A persistência fica na server action.
- */
-export async function runCloserAnalysis(
-  input: RunCloserAnalysisInput,
-): Promise<CloserAnalysisResult> {
-  const { transcript } = input;
-  if (!transcript.trim()) throw new Error('Transcrição vazia');
-
-  const [scoreRaw, extractRaw] = await Promise.all([
-    callGPT4oJSON(buildCloserScoringSystemPrompt(), buildCloserScoringUserPrompt(transcript)),
-    callGPT4oJSON(
-      buildCloserExtractionSystemPrompt(),
-      buildCloserExtractionUserPrompt(transcript),
-    ),
-  ]);
-
-  const scoreResult = parseScoreResponse(scoreRaw);
-  const extracted = parseExtractionResponse(extractRaw);
-
-  return {
-    overallScore: scoreResult.overall_score,
-    breakdown: scoreResult.breakdown,
-    summary: scoreResult.summary,
-    extracted,
-  };
-}
-
 // ── helpers ─────────────────────────────────────────────────────────────────
 
-function assertNumber(v: unknown, field: string): number {
+function assertBlock(v: unknown, field: string): number {
   const n = Number(v);
-  if (!Number.isFinite(n)) throw new Error(`Campo "${field}" não é número: ${String(v)}`);
-  return Math.round(Math.max(0, Math.min(100, n)));
+  if (!Number.isFinite(n)) throw new Error(`Bloco "${field}" não é número: ${String(v)}`);
+  return Math.round(Math.max(0, Math.min(10, n)) * 10) / 10;
 }
 
 function strOrNull(v: unknown): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
+}
+
+function strOrEmpty(v: unknown): string {
+  return typeof v === 'string' ? v.trim() : '';
 }
 
 function numOrNull(v: unknown): number | null {
@@ -140,7 +249,11 @@ function strArrayOrNull(v: unknown): string[] | null {
   return arr.length > 0 ? arr : null;
 }
 
-function parseNivelInteresse(v: unknown): 'baixo' | 'medio' | 'alto' | null {
+function strArrayOrEmpty(v: unknown): string[] {
+  return strArrayOrNull(v) ?? [];
+}
+
+function parseNivelInteresse(v: unknown): NivelInteresse | null {
   if (v === 'baixo' || v === 'medio' || v === 'alto') return v;
   return null;
 }

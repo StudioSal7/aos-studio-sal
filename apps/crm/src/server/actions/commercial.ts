@@ -67,11 +67,12 @@ export async function analyzeCloserAction(
       .update(schema.commercialAnalyses)
       .set({
         overallScore: result.overallScore,
-        scoreBreakdown: result.breakdown,
+        // Dossiê de método completo (detecção + 7 blocos + dossiê qualitativo).
+        scoreBreakdown: result.dossier,
         scoreSummary: result.summary,
         extractedData: result.extracted,
         status: 'concluido',
-        analyzedBy: 'gpt-4o',
+        analyzedBy: result.compressed ? `${result.model} (comprimido)` : result.model,
         updatedAt: new Date(),
       })
       .where(eq(schema.commercialAnalyses.id, analysisId));
