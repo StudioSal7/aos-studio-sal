@@ -1,0 +1,89 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-canvas: #f0e6de;
+  --color-paper: #f5efe9;
+  --color-ink: #4f4032;
+  --color-ink-muted: #8b8a85;
+  --color-line: #c9b8a8;
+  --color-leaf: #2f3b2a;
+  --color-wood: #a87b5b;
+  --color-clay: #6b2e1f;
+
+  --color-ink-hover: #3f3328;
+  --color-leaf-hover: #25301f;
+  --color-wood-hover: #8e6347;
+
+  --color-stage-open: var(--color-wood);
+  --color-stage-won: var(--color-leaf);
+  --color-stage-lost: var(--color-ink-muted);
+
+  --color-signal-hot: var(--color-wood);
+  --color-signal-review: var(--color-ink);
+  --color-signal-archive: var(--color-ink-muted);
+  --color-signal-fake: var(--color-clay);
+
+  --font-serif: var(--font-gowun), Georgia, serif;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --default-font-family: var(--font-sans);
+
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+}
+
+@layer base {
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+}
+
+@utility text-display {
+  font-family: var(--font-serif);
+  font-size: 60px;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  text-transform: lowercase;
+}
+
+@utility text-h2 {
+  font-family: var(--font-serif);
+  font-size: 42px;
+  line-height: 1.15;
+  text-transform: lowercase;
+}
+
+@utility text-h3 {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  line-height: 1.2;
+  text-transform: lowercase;
+}
+
+@utility text-body {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+@utility text-btn {
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-transform: lowercase;
+}
+
+@utility text-micro {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}

@@ -1,0 +1,101 @@
+import type { ComponentProps, ReactNode } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import {
+  LayoutGrid,
+  Search,
+  Flame,
+  Eye,
+  Calendar,
+  LineChart,
+  Activity,
+  Shield,
+  ShoppingBag,
+  Target,
+  type LucideIcon,
+} from 'lucide-react';
+import { requireAuth } from '@/server/auth';
+import { logoutAction } from '@/app/login/actions';
+import { CommandPalette } from '@/components/command-palette';
+
+export default async function CrmLayout({ children }: { children: ReactNode }) {
+  const auth = await requireAuth();
+  const isOwner = auth.role === 'owner';
+
+  return (
+    <div className="flex h-screen bg-canvas">
+      <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-paper">
+        <div className="flex h-16 items-center border-b border-line px-5">
+          <Image
+            src="/logo.png"
+            alt="Studio SAL"
+            width={120}
+            height={40}
+            className="object-contain"
+            priority
+          />
+        </div>
+
+        <nav className="flex-1 space-y-1 p-3">
+          <NavItem href="/kanban" label="kanban." icon={LayoutGrid} />
+          <NavItem href="/busca" label="busca." icon={Search} />
+          <NavItem href="/quentes" label="quentes." icon={Flame} />
+          <NavItem href="/revisao" label="para revisão." icon={Eye} />
+          <NavItem href="/calendario" label="calendário." icon={Calendar} />
+          <NavItem href="/dashboard" label="dashboard." icon={LineChart} />
+          <NavItem href="/trafego" label="tráfego pago." icon={Target} />
+          {isOwner && <NavItem href="/vendas-sal" label="vendas sal." icon={ShoppingBag} />}
+          <NavItem href="/saude" label="saúde dos dados." icon={Activity} />
+          <NavItem href="/teste" label="teste." icon={Target} />
+          {isOwner && <NavItem href="/admin" label="admin." icon={Shield} />}
+        </nav>
+
+        <div className="space-y-3 border-t border-line p-4">
+          <p className="text-micro text-ink-muted normal-case tracking-normal">
+            <kbd className="mr-1 inline-block border border-line bg-canvas px-1.5 py-0.5 text-[10px]">
+              ⌘K
+            </kbd>
+            para buscar
+          </p>
+          <p className="truncate text-micro text-ink-muted normal-case tracking-normal">
+            {auth.email}
+          </p>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="text-btn text-ink-muted hover:text-ink"
+            >
+              sair.
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {children}
+      </main>
+
+      <CommandPalette isOwner={isOwner} />
+    </div>
+  );
+}
+
+function NavItem({
+  href,
+  label,
+  icon: Icon,
+}: {
+  href: ComponentProps<typeof Link>['href'];
+  label: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 px-3 py-3 text-btn text-ink-muted hover:bg-canvas hover:text-ink"
+    >
+      <Icon size={20} strokeWidth={1.5} />
+      <span>{label}</span>
+    </Link>
+  );
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "@repo/config/tsconfig/library.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "preserve",
+    "lib": ["dom", "ES2022"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/crons/meeting-prompt",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/crons/sla-check",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/crons/data-quality",
+      "schedule": "0 11 * * 1"
+    }
+  ]
+}
