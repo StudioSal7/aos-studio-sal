@@ -13,6 +13,10 @@ import { ActivityTimeline } from './_components/activity-timeline';
 import { LeadDetailTabs } from './_components/lead-detail-tabs';
 import { LeadNotesForm } from './_components/lead-notes-form';
 import { ScheduleMeetingForm } from './_components/schedule-meeting-form';
+import { SdrAnalysisButton } from './_components/sdr-analysis-button';
+
+// Porta 1 do SDR puxa a conversa via Evolution + 2 chamadas GPT-4o (síncrono).
+export const maxDuration = 300;
 
 export default async function LeadDetailPage({
   params,
@@ -84,7 +88,8 @@ export default async function LeadDetailPage({
                 leadId={id}
               />
             </div>
-            <div>
+            <div className="space-y-6">
+              <SdrAnalysisButton leadId={id} whatsappE164={lead.whatsappE164} />
               <LeadNotesForm leadId={id} initialNotes={lead.notes ?? ''} />
             </div>
           </div>
