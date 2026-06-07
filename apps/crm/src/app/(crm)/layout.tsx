@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   LayoutGrid,
-  Search,
   Flame,
   Eye,
   Calendar,
@@ -15,6 +14,7 @@ import {
   Target,
   ClipboardCheck,
   MessageSquareText,
+  ListTodo,
   type LucideIcon,
 } from 'lucide-react';
 import { requireAuth } from '@/server/auth';
@@ -40,22 +40,30 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 space-y-1 p-3">
-          <NavItem href="/kanban" label="kanban." icon={LayoutGrid} />
-          <NavItem href="/busca" label="busca." icon={Search} />
-          <NavItem href="/quentes" label="quentes." icon={Flame} />
-          <NavItem href="/revisao" label="para revisão." icon={Eye} />
-          <NavItem href="/calendario" label="calendário." icon={Calendar} />
           <NavItem href="/dashboard" label="dashboard." icon={LineChart} />
-          <NavItem href="/trafego" label="tráfego pago." icon={Target} />
-          {isOwner && <NavItem href="/vendas-sal" label="vendas sal." icon={ShoppingBag} />}
-          <NavItem href="/saude" label="saúde dos dados." icon={Activity} />
-          <NavItem href={"/analise/closer" as Route<string>} label="análise closer." icon={ClipboardCheck} />
-          <NavItem href={"/analise/sdr" as Route<string>} label="análise sdr." icon={MessageSquareText} />
-          <NavItem href="/teste" label="teste." icon={Target} />
-          {isOwner && <NavItem href="/admin" label="admin." icon={Shield} />}
+          <NavItem href="/tarefas" label="tarefas." icon={ListTodo} />
+
+          <NavGroup label="crm">
+            <NavItem href="/kanban" label="kanban." icon={LayoutGrid} />
+            <NavItem href="/quentes" label="quentes." icon={Flame} />
+            <NavItem href="/revisao" label="para revisão." icon={Eye} />
+            <NavItem href="/calendario" label="calendário." icon={Calendar} />
+            <NavItem href="/saude" label="saúde dos dados." icon={Activity} />
+          </NavGroup>
+
+          <NavGroup label="comercial">
+            <NavItem href={"/analise/closer" as Route<string>} label="análise closer." icon={ClipboardCheck} />
+            <NavItem href={"/analise/sdr" as Route<string>} label="análise sdr." icon={MessageSquareText} />
+            {isOwner && <NavItem href="/vendas-sal" label="vendas sal." icon={ShoppingBag} />}
+          </NavGroup>
+
+          <NavGroup label="marketing">
+            <NavItem href="/trafego" label="tráfego pago." icon={Target} />
+          </NavGroup>
         </nav>
 
         <div className="space-y-3 border-t border-line p-4">
+          {isOwner && <NavItem href="/admin" label="admin." icon={Shield} />}
           <p className="text-micro text-ink-muted normal-case tracking-normal">
             <kbd className="mr-1 inline-block border border-line bg-canvas px-1.5 py-0.5 text-[10px]">
               ⌘K
@@ -81,6 +89,15 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
       </main>
 
       <CommandPalette isOwner={isOwner} />
+    </div>
+  );
+}
+
+function NavGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1 pt-3">
+      <p className="px-3 pb-1 text-micro text-ink-muted tracking-wide">{label}</p>
+      {children}
     </div>
   );
 }

@@ -273,6 +273,12 @@ NEXT_PUBLIC_OPERATION_TZ=America/Sao_Paulo
 
 ---
 
+## Aprendizados
+
+- **Shell + route group `(crm)`**: comandos como `ls`, `find`, `cat` com `(crm)` no path falham em zsh — parênteses são interpretados como glob e retornam "no matches found" sem aviso útil. Sempre usar aspas duplas: `ls "apps/crm/src/app/(crm)/"` ou `find apps/crm/src/app -path "*crm*" -name page.tsx`.
+
+---
+
 ## Critério de pronto da Fase 1
 
 1. Webhook Respondi criando lead em produção automaticamente

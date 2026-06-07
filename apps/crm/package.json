@@ -12,8 +12,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "import-legacy": "tsx scripts/import-legacy.ts",
+    "create-user": "tsx --env-file=.env.local scripts/create-user.ts",
     "import-sal-sales": "tsx --env-file=.env.local scripts/import-sal-sales.ts",
-    "analyze-closer-batch": "tsx --env-file=.env.local scripts/analyze-closer-batch.ts"
+    "analyze-closer-batch": "tsx --env-file=.env.local scripts/analyze-closer-batch.ts",
+    "analyze-sdr-batch": "tsx --env-file=.env.local scripts/analyze-sdr-batch.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
