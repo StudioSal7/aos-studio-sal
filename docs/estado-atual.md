@@ -1,5 +1,5 @@
 # Estado Atual — Motor de Análise Comercial
-**Data:** 2026-06-01 (atualizado)  
+**Data:** 2026-06-25 (atualizado)  
 **Projeto:** `aos-studio-sal` (CRM Studio Sal)
 
 ---

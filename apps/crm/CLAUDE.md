@@ -84,11 +84,23 @@ Para obter os IDs reais:
 | `components/command-palette/index.tsx` | Client | Cmd+K palette: busca leads, navega, cria, ações no lead atual |
 | `components/ui/action-feedback.tsx` | Client | Feedback padronizado: idle → pending → success (2.5s) → error |
 | `components/ui/kbd-hint.tsx` | Server | `<KbdHint keys={['shift','m']} />` — exibe atalho de teclado ao lado de CTAs |
-| `app/(crm)/leads/[id]/_components/lead-detail-tabs.tsx` | Client | Tabs com URL state (`?tab=`) — default `atividade` |
-| `app/(crm)/leads/[id]/_components/activity-timeline.tsx` | Server | Timeline cronológica reversa: reuniões + mudanças de estágio |
+| `app/(crm)/leads/[id]/_components/lead-detail-tabs.tsx` | Client | Tabs com URL state real (`?tab=` via `useSearchParams`/`router.replace`) — default `atividade`. Effect best-effort de scroll p/ `#resp-<id>` quando cai na aba `info` |
+| `app/(crm)/leads/[id]/_components/activity-timeline.tsx` | Server | Timeline cronológica reversa: reuniões + mudanças de estágio + **formulários preenchidos** (evento clicável → `?tab=info#resp-<id>`) |
+| `app/(crm)/leads/[id]/_components/lead-dossier.tsx` | Server | **Dossiê** (aba "informações"): identificação + qualificação (labels legíveis) + origem + dados extraídos das calls + respostas verbatim de todos os formulários (`<details>` nativo). Só leitura |
+| `app/(crm)/leads/[id]/_components/data-row.tsx` | Server | `Section` + `DataRow` extraídos (reusados no dossiê e na aba comercial) |
 | `app/(crm)/_components/lead-quick-view.tsx` | Client | Sheet lateral (~480px) ao clicar no card do Kanban |
 
 **Primitivos UI adicionados ao shadcn:** `sheet.tsx`, `tabs.tsx`, `command.tsx`
+
+**Formulários — componentes relevantes:**
+
+| Arquivo | Descrição |
+|---|---|
+| `components/forms/form-runtime.tsx` | Runtime público (Typeform-style). Suporta `config.backgroundImage`: aplica `background-image` inline + overlay `bg-black/45` + classe `.form-on-photo` que sobrescreve tokens CSS para versão branca/transparente. **Auto-submit ao chegar na tela `encerramento`** (`useEffect` guardado por `useRef`) — a tela "recebemos sua aplicação" não tem botão de envio, então o POST dispara sozinho; `ClosingSending`/`ClosingError` dão feedback honesto (enviando → sucesso → retry em falha) |
+| `components/forms/fields.tsx` | 13 tipos de campo. `WelcomeField` usa `bg-wood` nos botões (não `bg-ink`) + `whitespace-pre-line` no subtítulo para `\n` literais |
+| `app/globals.css` | Classe `.form-on-photo` — override de todos os tokens semânticos (`--color-ink`, `--color-paper`, `--color-line`, etc.) para fundos escuros. Tailwind herda automaticamente via CSS custom property cascade |
+| `scripts/seed-aplicacao-sal.ts` | Cria form `aplicacao-sal` (17 telas, réplica do Respondi, fundo `/sal-fundo.jpg`). Idempotente. `pnpm --filter crm seed-aplicacao-sal` |
+| `public/sal-fundo.jpg` | Foto botânica escura (folhas tropicais) — fundo do form `aplicacao-sal` |
 
 ---
 
