@@ -8,12 +8,16 @@ import {
   getLeadById,
   getLeadStageHistory,
 } from '@/server/queries/leads';
+import { getLeadFormResponses } from '@/server/queries/forms';
+import { getAnalysesForLead } from '@/server/queries/commercial';
 import { Badge } from '@/components/ui/badge';
 import { ActivityTimeline } from './_components/activity-timeline';
 import { LeadDetailTabs } from './_components/lead-detail-tabs';
+import { LeadDossier } from './_components/lead-dossier';
 import { LeadNotesForm } from './_components/lead-notes-form';
 import { ScheduleMeetingForm } from './_components/schedule-meeting-form';
 import { SdrAnalysisButton } from './_components/sdr-analysis-button';
+import { Section, DataRow } from './_components/data-row';
 
 // Porta 1 do SDR puxa a conversa via Evolution + 2 chamadas GPT-4o (síncrono).
 export const maxDuration = 300;
@@ -27,7 +31,7 @@ export default async function LeadDetailPage({
   const lead = await getLeadById(id);
   if (!lead) notFound();
 
-  const [history, stages, meetings] = await Promise.all([
+  const [history, stages, meetings, formResponses, analyses] = await Promise.all([
     getLeadStageHistory(id),
     getAllStages(),
     db
@@ -35,6 +39,8 @@ export default async function LeadDetailPage({
       .from(schema.meetings)
       .where(eq(schema.meetings.leadId, id))
       .orderBy(desc(schema.meetings.scheduledAt)),
+    getLeadFormResponses(id),
+    getAnalysesForLead(id),
   ]);
 
   const stageMap = new Map(stages.map((s) => [s.id, s]));
@@ -77,6 +83,7 @@ export default async function LeadDetailPage({
       </header>
 
       <LeadDetailTabs
+        leadId={id}
         atividade={
           <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <div className="space-y-6">
@@ -85,6 +92,11 @@ export default async function LeadDetailPage({
                 meetings={meetings}
                 stageHistory={history}
                 stages={stageMap}
+                formResponses={formResponses.map((r) => ({
+                  id: r.id,
+                  formTitulo: r.formTitulo,
+                  concluidoEm: r.concluidoEm,
+                }))}
                 leadId={id}
               />
             </div>
@@ -95,44 +107,10 @@ export default async function LeadDetailPage({
           </div>
         }
         info={
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Section title="identificação">
-              <DataRow label="nome completo" value={lead.name} />
-              <DataRow label="apelido" value={lead.nickname} />
-              <DataRow label="e-mail" value={lead.email} />
-              <DataRow label="whatsapp" value={lead.whatsappE164} />
-              <DataRow label="instagram" value={lead.instagramHandle} />
-              <DataRow label="cidade" value={lead.cidade} />
-              <DataRow label="estado" value={lead.estado} />
-            </Section>
-            <Section title="origem">
-              <DataRow label="utm source" value={lead.utmSource} />
-              <DataRow label="utm medium" value={lead.utmMedium} />
-              <DataRow label="utm campaign" value={lead.utmCampaign} />
-              <DataRow label="utm term" value={lead.utmTerm} />
-              <DataRow label="utm content" value={lead.utmContent} />
-              <DataRow label="respondi id" value={lead.intakeRespondentId} />
-            </Section>
-          </div>
+          <LeadDossier lead={lead} analyses={analyses} formResponses={formResponses} />
         }
         comercial={
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Section title="qualificação">
-              <DataRow label="faixa etária" value={lead.idadeFaixa} />
-              <DataRow label="tempo no nicho" value={lead.tempoNoNichoFaixa} />
-              <DataRow
-                label="abordagem preferida"
-                value={lead.abordagemPreferida}
-              />
-              <DataRow label="renda" value={lead.rendaFaixa} />
-              <DataRow label="orçamento" value={lead.orcamentoFaixa} />
-              <DataRow label="profissão" value={lead.profissao} />
-              <DataRow label="tempo de negócio" value={lead.tempoNegocio} />
-              <DataRow
-                label="cliente anterior"
-                value={lead.ehClienteAnterior ? 'sim' : 'não'}
-              />
-            </Section>
+          <div className="max-w-xl">
             <Section title="comercial">
               <DataRow
                 label="valor proposto"
@@ -196,37 +174,5 @@ export default async function LeadDetailPage({
         }
       />
     </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="border border-line bg-paper p-6">
-      <h2 className="mb-4 text-micro text-ink-muted">{title}</h2>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-body">{children}</dl>
-    </section>
-  );
-}
-
-function DataRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <>
-      <dt className="text-ink-muted">{label}</dt>
-      <dd className="text-ink">
-        {value ?? <span className="text-ink-muted">—</span>}
-      </dd>
-    </>
   );
 }

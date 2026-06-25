@@ -57,6 +57,46 @@ export async function listAnalyses(
   }));
 }
 
+// Análises (closer + sdr) vinculadas a um lead, para o dossiê no card.
+// Só status 'concluido' — pendente/erro/nao_aplicavel não geram dado de negócio útil.
+export interface LeadAnalysisSummary {
+  id: string;
+  analyzer: 'closer' | 'sdr';
+  title: string;
+  callDate: string;
+  overallScore: number | null;
+  extractedData: Record<string, unknown> | null;
+}
+
+export async function getAnalysesForLead(leadId: string): Promise<LeadAnalysisSummary[]> {
+  const rows = await db
+    .select({
+      id: schema.commercialAnalyses.id,
+      analyzer: schema.commercialAnalyses.analyzer,
+      title: schema.commercialAnalyses.title,
+      callDate: schema.commercialAnalyses.callDate,
+      overallScore: schema.commercialAnalyses.overallScore,
+      extractedData: schema.commercialAnalyses.extractedData,
+    })
+    .from(schema.commercialAnalyses)
+    .where(
+      and(
+        eq(schema.commercialAnalyses.leadId, leadId),
+        eq(schema.commercialAnalyses.status, 'concluido'),
+      ),
+    )
+    .orderBy(desc(schema.commercialAnalyses.callDate), desc(schema.commercialAnalyses.createdAt));
+
+  return rows.map((r) => ({
+    id: r.id,
+    analyzer: r.analyzer as 'closer' | 'sdr',
+    title: r.title,
+    callDate: r.callDate,
+    overallScore: r.overallScore,
+    extractedData: r.extractedData as Record<string, unknown> | null,
+  }));
+}
+
 export async function getAnalysisById(id: string) {
   const [row] = await db
     .select({

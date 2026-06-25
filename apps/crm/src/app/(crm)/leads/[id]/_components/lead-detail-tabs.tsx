@@ -1,27 +1,53 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 type TabId = 'atividade' | 'info' | 'comercial' | 'historico';
 
+const TAB_IDS: TabId[] = ['atividade', 'info', 'comercial', 'historico'];
+
 export function LeadDetailTabs({
+  leadId,
   atividade,
   info,
   comercial,
   historico,
   defaultTab = 'atividade',
 }: {
+  leadId: string;
   atividade: ReactNode;
   info: ReactNode;
   comercial: ReactNode;
   historico: ReactNode;
   defaultTab?: TabId;
 }) {
-  const [tab, setTab] = useState<TabId>(defaultTab);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const param = searchParams.get('tab');
+  const tab: TabId = TAB_IDS.includes(param as TabId) ? (param as TabId) : defaultTab;
+
+  // Deep-link da timeline: ao cair na aba do dossiê com hash #resp-<id>, rola até
+  // a resposta. Best-effort — o conteúdo da aba só monta quando ela fica ativa.
+  useEffect(() => {
+    if (tab !== 'info') return;
+    const hash = window.location.hash;
+    if (!hash.startsWith('#resp-')) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el instanceof HTMLDetailsElement) el.open = true;
+    }
+  }, [tab]);
 
   return (
-    <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)}>
+    <Tabs
+      value={tab}
+      onValueChange={(v) =>
+        router.replace(`/leads/${leadId}?tab=${v}`, { scroll: false })
+      }
+    >
       <TabsList className="px-8">
         <TabsTrigger value="atividade">atividade</TabsTrigger>
         <TabsTrigger value="info">informações</TabsTrigger>

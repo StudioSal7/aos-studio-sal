@@ -1,4 +1,5 @@
-import { ArrowRight, Calendar, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, Calendar, CheckCircle2, XCircle, RotateCcw, FileText } from 'lucide-react';
 import { ConfirmMeetingForm } from './confirm-meeting-form';
 
 type Meeting = {
@@ -21,6 +22,12 @@ type StageHistory = {
 
 type Stage = { id: string; displayName: string };
 
+type FormSubmission = {
+  id: string;
+  formTitulo: string;
+  concluidoEm: string;
+};
+
 type TimelineItem =
   | {
       kind: 'meeting';
@@ -33,17 +40,25 @@ type TimelineItem =
       id: string;
       at: Date;
       history: StageHistory;
+    }
+  | {
+      kind: 'form';
+      id: string;
+      at: Date;
+      form: FormSubmission;
     };
 
 export function ActivityTimeline({
   meetings,
   stageHistory,
   stages,
+  formResponses = [],
   leadId,
 }: {
   meetings: Meeting[];
   stageHistory: StageHistory[];
   stages: Map<string, Stage>;
+  formResponses?: FormSubmission[];
   leadId: string;
 }) {
   const items: TimelineItem[] = [
@@ -59,6 +74,12 @@ export function ActivityTimeline({
       at: new Date(h.changedAt),
       history: h,
     })),
+    ...formResponses.map<TimelineItem>((f) => ({
+      kind: 'form',
+      id: `f-${f.id}`,
+      at: new Date(f.concluidoEm),
+      form: f,
+    })),
   ].sort((a, b) => b.at.getTime() - a.at.getTime());
 
   if (items.length === 0) {
@@ -69,14 +90,49 @@ export function ActivityTimeline({
 
   return (
     <ol className="relative space-y-4">
-      {items.map((item) =>
-        item.kind === 'meeting' ? (
-          <MeetingItem key={item.id} meeting={item.meeting} leadId={leadId} />
-        ) : (
-          <StageItem key={item.id} history={item.history} stages={stages} />
-        ),
-      )}
+      {items.map((item) => {
+        if (item.kind === 'meeting') {
+          return <MeetingItem key={item.id} meeting={item.meeting} leadId={leadId} />;
+        }
+        if (item.kind === 'stage') {
+          return <StageItem key={item.id} history={item.history} stages={stages} />;
+        }
+        return <FormSubmissionItem key={item.id} form={item.form} leadId={leadId} />;
+      })}
     </ol>
+  );
+}
+
+function FormSubmissionItem({ form, leadId }: { form: FormSubmission; leadId: string }) {
+  const dateStr = new Date(form.concluidoEm).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return (
+    <li className="flex gap-3 border-l-2 border-line pl-4">
+      <div className="-ml-[1.05rem] mt-0.5 flex h-5 w-5 items-center justify-center bg-paper text-wood">
+        <FileText className="h-3.5 w-3.5" aria-hidden />
+      </div>
+      <div className="flex-1 space-y-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-micro text-ink-muted">formulário preenchido</span>
+          <span className="text-micro text-ink-muted normal-case tracking-normal">
+            {dateStr}
+          </span>
+        </div>
+        <Link
+          href={`/leads/${leadId}?tab=info#resp-${form.id}`}
+          className="block text-body text-wood underline-offset-2 hover:underline"
+        >
+          {form.formTitulo} →
+        </Link>
+      </div>
+    </li>
   );
 }
 

@@ -55,3 +55,12 @@ export function isEnumTarget(t: LeadMappingTarget | null): boolean {
   if (!t) return false;
   return LEAD_MAPPING_OPTIONS.find((o) => o.value === t)?.isEnum ?? false;
 }
+
+// Resolve o literal cru de um enum (ex.: '25_a_34') para o label legível
+// ('25 a 34'), reusando LEAD_ENUM_VALUES. Fallback no próprio valor quando não há
+// mapeamento — usado no dossiê do lead para não exibir o literal do banco.
+export function labelForLeadEnum(target: string, value: string | null | undefined): string | null {
+  if (value == null || value === '') return null;
+  const found = LEAD_ENUM_VALUES[target]?.find((o) => o.value === value);
+  return found?.label ?? value;
+}

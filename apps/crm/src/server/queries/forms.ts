@@ -3,7 +3,7 @@
 // paused/closed form 404s. Returns a serializable FormView (no Date objects).
 // The admin queries (listForms / getFormForEdit) feed the builder pages.
 
-import { asc, count, desc, eq } from 'drizzle-orm';
+import { asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import type { FormFieldView, FormStatus, FormView } from '@/components/forms/types';
@@ -186,4 +186,82 @@ export async function getFormResponses(
       tempoPreenchimentoSeg: r.tempoPreenchimentoSeg,
     })),
   };
+}
+
+// ── Respostas de formulário por lead (para o dossiê no card) ─────────────────
+// Todas as respostas vinculadas ao lead, de QUALQUER formulário, com as respostas
+// já rotuladas pela pergunta (titulo do campo). Espelha getFormResponses, mas
+// filtra por leadId e resolve o título de cada form envolvido.
+export interface LeadFormResponse {
+  id: string;
+  formTitulo: string;
+  formSlug: string;
+  concluidoEm: string; // ISO
+  answers: { fieldTitulo: string; tipo: string; value: string }[];
+}
+
+export async function getLeadFormResponses(leadId: string): Promise<LeadFormResponse[]> {
+  const rows = await db
+    .select({
+      id: schema.formResponses.id,
+      formId: schema.formResponses.formId,
+      formTitulo: schema.forms.titulo,
+      formSlug: schema.forms.slug,
+      dados: schema.formResponses.dados,
+      concluidoEm: schema.formResponses.concluidoEm,
+    })
+    .from(schema.formResponses)
+    .leftJoin(schema.forms, eq(schema.formResponses.formId, schema.forms.id))
+    .where(eq(schema.formResponses.leadId, leadId))
+    .orderBy(desc(schema.formResponses.concluidoEm));
+
+  if (rows.length === 0) return [];
+
+  // Busca os campos de todos os forms envolvidos numa tacada → mapa fieldId→meta.
+  const formIds = [...new Set(rows.map((r) => r.formId))];
+  const fields = await db
+    .select({
+      id: schema.formFields.id,
+      formId: schema.formFields.formId,
+      titulo: schema.formFields.titulo,
+      tipo: schema.formFields.tipo,
+      ordem: schema.formFields.ordem,
+    })
+    .from(schema.formFields)
+    .where(inArray(schema.formFields.formId, formIds))
+    .orderBy(asc(schema.formFields.ordem));
+
+  const fieldsByForm = new Map<string, typeof fields>();
+  for (const f of fields) {
+    const list = fieldsByForm.get(f.formId) ?? [];
+    list.push(f);
+    fieldsByForm.set(f.formId, list);
+  }
+
+  return rows.map((r) => {
+    const dados = (r.dados ?? {}) as Record<string, unknown>;
+    const formFieldsList = fieldsByForm.get(r.formId) ?? [];
+    const answers = formFieldsList
+      .filter((f) => f.tipo !== 'boas_vindas' && f.tipo !== 'encerramento')
+      .filter((f) => dados[f.id] !== undefined && dados[f.id] !== null && dados[f.id] !== '')
+      .map((f) => ({
+        fieldTitulo: f.titulo,
+        tipo: f.tipo,
+        value: formatAnswer(dados[f.id]),
+      }));
+
+    return {
+      id: r.id,
+      formTitulo: r.formTitulo ?? 'formulário',
+      formSlug: r.formSlug ?? '',
+      concluidoEm: r.concluidoEm.toISOString(),
+      answers,
+    };
+  });
+}
+
+function formatAnswer(value: unknown): string {
+  if (Array.isArray(value)) return value.map((v) => String(v)).join(', ');
+  if (typeof value === 'boolean') return value ? 'sim' : 'não';
+  return String(value);
 }
