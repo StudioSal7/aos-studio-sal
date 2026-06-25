@@ -22,6 +22,7 @@ import {
 import { requireAuth } from '@/server/auth';
 import { logoutAction } from '@/app/login/actions';
 import { CommandPalette } from '@/components/command-palette';
+import { CollapsibleNavGroup } from './_components/collapsible-nav-group';
 
 export default async function CrmLayout({ children }: { children: ReactNode }) {
   const auth = await requireAuth();
@@ -44,7 +45,7 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
         <nav className="flex-1 space-y-1 p-3">
           <NavItem href="/dashboard" label="dashboard." icon={LineChart} />
 
-          <NavGroup label="crm">
+          <CollapsibleNavGroup label="crm">
             <NavItem href="/kanban" label="kanban." icon={LayoutGrid} />
             <NavItem href="/quentes" label="quentes." icon={Flame} />
             <NavItem href="/revisao" label="para revisão." icon={Eye} />
@@ -58,18 +59,18 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
               />
             )}
             <NavItem href="/tarefas" label="tarefas." icon={ListTodo} />
-          </NavGroup>
+          </CollapsibleNavGroup>
 
-          <NavGroup label="comercial">
+          <CollapsibleNavGroup label="comercial">
             <NavItem href={"/analise/closer" as Route<string>} label="análise closer." icon={ClipboardCheck} />
             <NavItem href={"/analise/sdr" as Route<string>} label="análise sdr." icon={MessageSquareText} />
             <NavItem href={"/comercial/treino" as Route<string>} label="treino spin." icon={Dumbbell} />
             {isOwner && <NavItem href="/vendas-sal" label="vendas sal." icon={ShoppingBag} />}
-          </NavGroup>
+          </CollapsibleNavGroup>
 
-          <NavGroup label="marketing">
+          <CollapsibleNavGroup label="marketing">
             <NavItem href="/trafego" label="tráfego pago." icon={Target} />
-          </NavGroup>
+          </CollapsibleNavGroup>
         </nav>
 
         <div className="space-y-3 border-t border-line p-4">
@@ -99,15 +100,6 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
       </main>
 
       <CommandPalette isOwner={isOwner} />
-    </div>
-  );
-}
-
-function NavGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="space-y-1 pt-3">
-      <p className="px-3 pb-1 text-micro text-ink-muted tracking-wide">{label}</p>
-      {children}
     </div>
   );
 }
