@@ -225,7 +225,7 @@ NEXT_PUBLIC_OPERATION_TZ=America/Sao_Paulo
   - CSV: `Respondi _ Formulário aplicação _ branding essencial - Página1.csv`
   - Script usa `RESPONDI_COLUMN_MAP` customizado (colunas do Respondi diferem do `DEFAULT_COLUMN_MAP`)
   - Relatório em `apps/crm/tmp/import-report.md`
-- Git inicializado + repositório conectado: `https://github.com/rodrigo3vium/aos-studio-sal`
+- Git inicializado + repositório conectado: `https://github.com/StudioSal7/aos-studio-sal` (migrado de `rodrigo3vium/aos-studio-sal` — remote `origin` atualizado em 2026-06-25)
 - Código pusado para branch `main` (145 arquivos, sem `.env.local`)
 
 ### ⚠️ Bugs corrigidos (não reverter)
