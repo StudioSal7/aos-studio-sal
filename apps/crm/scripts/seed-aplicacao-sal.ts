@@ -81,7 +81,7 @@ async function main() {
       tipo: 'boas_vindas',
       titulo: 'AVISO IMPORTANTE',
       subtitulo:
-        'Somos uma agência boutique, comprometida com um atendimento personalizado, próximo e artesanal e, devido à alta demanda, precisamos selecionar com carinho os projetos que melhor se alinham com a transformação que podemos promover.\nAcreditamos que você nos escolhe, mas nós também escolhemos você.\nPor isso, nem todos os projetos que recebemos seguem adiante.\n\nTe agradecemos desde já pela compreensão e te retornaremos o quanto antes (fique atenta ao whatsapp e email – principalmente a caixa de spam).\n\nVamos lá?',
+        'Somos uma agência boutique, comprometida com um atendimento *personalizado, próximo e artesanal* e, devido à alta demanda, precisamos selecionar com carinho os projetos que melhor se alinham com a transformação que podemos promover.\n*Acreditamos que você nos escolhe, mas nós também escolhemos você.*\nPor isso, nem todos os projetos que recebemos seguem adiante.\n\nTe agradecemos desde já pela compreensão e te retornaremos o quanto antes (fique atenta ao whatsapp e email – principalmente a caixa de spam).\n\nVamos lá?',
       obrigatorio: false,
       config: { botaoTexto: 'Vamos!' },
     },

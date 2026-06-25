@@ -25,6 +25,12 @@ function Prompt({ field }: { field: FieldProps['field'] }) {
   );
 }
 
+// Inline italic: converts `*trecho*` em <em>. Marcador `*` (asterisco) — `_`
+// não pode, já é usado literal/decorativo em alguns subtítulos do seed.
+function renderInline(text: string): React.ReactNode {
+  return text.split('*').map((seg, i) => (i % 2 === 1 ? <em key={i}>{seg}</em> : seg));
+}
+
 const lineInput =
   'mt-6 w-full border-b border-line bg-transparent pb-2 text-2xl text-ink placeholder:text-ink-muted/60 focus:border-ink focus:outline-none';
 
@@ -167,7 +173,8 @@ function MultiSelectField({ field, value, onChange }: FieldProps) {
   return (
     <div className="w-full">
       <Prompt field={field} />
-      <div className="mt-6 flex flex-col gap-3">
+      <p className="mt-2 text-xs text-ink-muted">Selecione uma ou mais opções</p>
+      <div className="mt-5 flex flex-col gap-3">
         {options.map((opt, i) => {
           const active = selected.includes(opt);
           return (
@@ -185,7 +192,6 @@ function MultiSelectField({ field, value, onChange }: FieldProps) {
           );
         })}
       </div>
-      <p className="mt-3 text-xs text-ink-muted">Selecione uma ou mais opções</p>
     </div>
   );
 }
@@ -285,8 +291,8 @@ function WelcomeField({ field, onSubmit }: FieldProps) {
   const buttonText = field.config?.botaoTexto ?? 'começar';
   return (
     <div className="flex flex-col items-start text-left">
-      <h1 className="text-display text-ink">{field.titulo}</h1>
-      {field.subtitulo && <p className="mt-4 max-w-lg text-body text-ink-muted whitespace-pre-line">{field.subtitulo}</p>}
+      <h1 className="text-form-title text-ink">{field.titulo}</h1>
+      {field.subtitulo && <p className="mt-4 max-w-lg text-body text-ink-muted whitespace-pre-line">{renderInline(field.subtitulo)}</p>}
       <button
         type="button"
         onClick={onSubmit}
@@ -304,8 +310,8 @@ function ClosingField({ field }: FieldProps) {
       <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-leaf/15">
         <Check className="h-7 w-7 text-leaf" />
       </div>
-      <h1 className="text-display text-ink">{field.titulo}</h1>
-      {field.subtitulo && <p className="mt-4 max-w-lg text-body text-ink-muted">{field.subtitulo}</p>}
+      <h1 className="text-form-title text-ink">{field.titulo}</h1>
+      {field.subtitulo && <p className="mt-4 max-w-lg text-body text-ink-muted whitespace-pre-line">{renderInline(field.subtitulo)}</p>}
     </div>
   );
 }

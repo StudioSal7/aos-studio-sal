@@ -72,6 +72,14 @@
   text-transform: lowercase;
 }
 
+@utility text-form-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 7vw, 3.75rem); /* 32px no mobile → 60px no desktop */
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  text-transform: lowercase;
+}
+
 @utility text-h2 {
   font-family: var(--font-serif);
   font-size: 42px;
