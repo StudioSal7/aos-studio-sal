@@ -129,7 +129,7 @@ export function KanbanBoard({
           <ActionFeedback state={moveError.state} pendingLabel="movendo..." />
         </header>
 
-        <div className="flex flex-1 gap-6 overflow-x-auto p-6">
+        <div className="flex min-h-0 flex-1 gap-6 overflow-x-auto overflow-y-hidden p-6">
           <DndContext
             sensors={sensors}
             onDragStart={({ active }) => setActiveId(String(active.id))}

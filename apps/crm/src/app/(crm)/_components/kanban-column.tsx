@@ -38,7 +38,7 @@ export function KanbanColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          'flex-1 space-y-3 border border-transparent p-2 transition-colors',
+          'flex-1 overflow-y-auto space-y-3 border border-transparent p-2 transition-colors',
           isOver ? 'border-line bg-paper' : 'bg-canvas',
           leads.length === 0 && 'min-h-16',
         )}
