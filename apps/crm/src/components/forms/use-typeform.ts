@@ -20,7 +20,7 @@ interface UseTypeformReturn {
   setAnswer: (fieldId: string, value: unknown) => void;
   next: () => boolean;
   prev: () => void;
-  submit: () => void;
+  submit: () => Promise<boolean>;
   startedAt: string;
 }
 
@@ -61,13 +61,15 @@ export function useTypeform(
     setError(null);
   }, []);
 
-  const submit = useCallback(async () => {
+  const submit = useCallback(async (): Promise<boolean> => {
     setState('submitting');
     try {
       await onSubmit(answersRef.current, startedAtRef.current);
       setState('completed');
+      return true;
     } catch {
       setState('active');
+      return false;
     }
   }, [onSubmit]);
 

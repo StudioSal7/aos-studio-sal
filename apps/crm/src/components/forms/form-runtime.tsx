@@ -4,7 +4,7 @@
 // slide transition (no framer-motion), keyboard-friendly. Submits to
 // /api/forms/submit. All 13 field types via FieldComponent (./fields).
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTypeform } from './use-typeform';
 import { FieldComponent, fieldUsesOkButton } from './fields';
 import type { FormView } from './types';
@@ -56,6 +56,27 @@ export function FormRuntime({ form, utm }: FormRuntimeProps) {
   const isLast = currentIndex === fields.length - 1;
   const isClosing = currentField?.tipo === 'encerramento';
   const isWelcome = currentField?.tipo === 'boas_vindas';
+  const lastFieldIsClosing = fields[fields.length - 1]?.tipo === 'encerramento';
+
+  // Envio na tela de encerramento. A tela "recebemos sua aplicação" promete que
+  // o envio aconteceu — então disparamos automaticamente ao chegar nela, em vez
+  // de exigir um Enter invisível (causa raiz do bug: leads não eram criados).
+  const [closeError, setCloseError] = useState(false);
+  const closeSubmittedRef = useRef(false);
+
+  const runCloseSubmit = useCallback(async () => {
+    setCloseError(false);
+    const ok = await submit();
+    if (!ok) setCloseError(true);
+  }, [submit]);
+
+  useEffect(() => {
+    if (!isClosing) return;
+    if (closeSubmittedRef.current) return; // só tenta uma vez automaticamente
+    if (state !== 'active') return; // aguarda a transição terminar
+    closeSubmittedRef.current = true;
+    void runCloseSubmit();
+  }, [isClosing, state, runCloseSubmit]);
 
   // Enter advances for text-like fields (single-choice auto-advances on click/
   // key; textarea needs Cmd/Ctrl+Enter, handled in the field itself).
@@ -66,11 +87,8 @@ export function FormRuntime({ form, utm }: FormRuntimeProps) {
       if (target?.tagName === 'TEXTAREA') return;
       if (e.key === 'Enter') {
         // Let the focused input's own onKeyDown handle Enter; only handle the
-        // screen cases here (welcome/closing have no input).
-        if (isClosing) {
-          e.preventDefault();
-          submit();
-        } else if (isWelcome) {
+        // welcome screen here (closing auto-submits via the effect above).
+        if (isWelcome) {
           e.preventDefault();
           next();
         }
@@ -78,9 +96,10 @@ export function FormRuntime({ form, utm }: FormRuntimeProps) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [state, isClosing, isWelcome, next, submit]);
+  }, [state, isWelcome, next]);
 
-  if (state === 'completed') {
+  // Tela genérica de conclusão só para forms SEM campo de encerramento próprio.
+  if (state === 'completed' && !lastFieldIsClosing) {
     return (
       <CompletedScreen
         mensagem={form.config?.mensagemFinal ?? null}
@@ -136,13 +155,29 @@ export function FormRuntime({ form, utm }: FormRuntimeProps) {
           key={currentField.id}
           className={`flex min-h-[60vh] max-w-xl items-center transition-all duration-200 ease-out ${transitionClass}`}
         >
-          <FieldComponent
-            field={currentField}
-            value={currentValue}
-            onChange={(val) => setAnswer(currentField.id, val)}
-            onSubmit={() => (isClosing ? submit() : next())}
-            autoFocus
-          />
+          {isClosing ? (
+            closeError ? (
+              <ClosingError onRetry={runCloseSubmit} />
+            ) : state === 'completed' ? (
+              <FieldComponent
+                field={currentField}
+                value={currentValue}
+                onChange={() => {}}
+                onSubmit={() => {}}
+                autoFocus={false}
+              />
+            ) : (
+              <ClosingSending />
+            )
+          ) : (
+            <FieldComponent
+              field={currentField}
+              value={currentValue}
+              onChange={(val) => setAnswer(currentField.id, val)}
+              onSubmit={() => next()}
+              autoFocus
+            />
+          )}
         </div>
 
         {error && <p className="mt-4 max-w-xl text-sm text-clay">{error}</p>}
@@ -187,6 +222,35 @@ export function FormRuntime({ form, utm }: FormRuntimeProps) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function ClosingSending() {
+  return (
+    <div className="flex flex-col items-start">
+      <h1 className="text-form-title text-ink">enviando…</h1>
+      <p className="mt-4 max-w-lg text-body text-ink-muted">
+        Estamos registrando sua aplicação. Um instante.
+      </p>
+    </div>
+  );
+}
+
+function ClosingError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-start">
+      <h1 className="text-form-title text-ink">algo deu errado.</h1>
+      <p className="mt-4 max-w-lg text-body text-ink-muted">
+        Não conseguimos registrar sua aplicação agora. Toque abaixo para tentar de novo.
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="text-btn mt-9 bg-wood px-8 py-3.5 text-white transition-colors hover:bg-wood-hover"
+      >
+        tentar novamente →
+      </button>
     </div>
   );
 }
