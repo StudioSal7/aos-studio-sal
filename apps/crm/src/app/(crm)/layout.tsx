@@ -43,7 +43,6 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 space-y-1 p-3">
           <NavItem href="/dashboard" label="dashboard." icon={LineChart} />
-          <NavItem href="/tarefas" label="tarefas." icon={ListTodo} />
 
           <NavGroup label="crm">
             <NavItem href="/kanban" label="kanban." icon={LayoutGrid} />
@@ -51,6 +50,14 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
             <NavItem href="/revisao" label="para revisão." icon={Eye} />
             <NavItem href="/calendario" label="calendário." icon={Calendar} />
             <NavItem href="/saude" label="saúde dos dados." icon={Activity} />
+            {isOwner && (
+              <NavItem
+                href={'/admin/formularios' as Route<string>}
+                label="formulários."
+                icon={FileText}
+              />
+            )}
+            <NavItem href="/tarefas" label="tarefas." icon={ListTodo} />
           </NavGroup>
 
           <NavGroup label="comercial">
@@ -66,13 +73,6 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="space-y-3 border-t border-line p-4">
-          {isOwner && (
-            <NavItem
-              href={'/admin/formularios' as Route<string>}
-              label="formulários."
-              icon={FileText}
-            />
-          )}
           {isOwner && <NavItem href="/admin" label="admin." icon={Shield} />}
           <p className="text-micro text-ink-muted normal-case tracking-normal">
             <kbd className="mr-1 inline-block border border-line bg-canvas px-1.5 py-0.5 text-[10px]">
