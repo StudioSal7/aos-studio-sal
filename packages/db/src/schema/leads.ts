@@ -30,8 +30,11 @@ export const leads = pgTable(
     name: text('name'),
     nickname: text('nickname'),
     whatsappE164: text('whatsapp_e164'),
+    // ⚠️ Usar classe [^0-9], NÃO '\D': o backslash se perde na geração da
+    // migration (virou 'D' no banco e não removia o '+', quebrando o match por
+    // dígitos). [^0-9] é inequívoco.
     whatsappDigitsOnly: text('whatsapp_digits_only').generatedAlwaysAs(
-      sql`regexp_replace(whatsapp_e164, '\D', '', 'g')`,
+      sql`regexp_replace(whatsapp_e164, '[^0-9]', '', 'g')`,
     ),
     email: text('email'),
     instagramHandle: text('instagram_handle'),

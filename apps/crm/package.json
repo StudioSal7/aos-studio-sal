@@ -15,7 +15,10 @@
     "create-user": "tsx --env-file=.env.local scripts/create-user.ts",
     "import-sal-sales": "tsx --env-file=.env.local scripts/import-sal-sales.ts",
     "analyze-closer-batch": "tsx --env-file=.env.local scripts/analyze-closer-batch.ts",
-    "analyze-sdr-batch": "tsx --env-file=.env.local scripts/analyze-sdr-batch.ts"
+    "analyze-sdr-batch": "tsx --env-file=.env.local scripts/analyze-sdr-batch.ts",
+    "seed-roleplay-example": "tsx --env-file=.env.local scripts/seed-roleplay-example.ts",
+    "seed-form-example": "tsx --env-file=.env.local scripts/seed-form-example.ts",
+    "seed-aplicacao-sal": "tsx --env-file=.env.local scripts/seed-aplicacao-sal.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

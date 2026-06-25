@@ -36,9 +36,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ── Argument parsing ────────────────────────────────────────────────────────
 
-const inputPath = process.argv[2];
+const args = process.argv.slice(2);
+const closerIdFlag = args.find((a) => a.startsWith('--closer-id='))?.split('=')[1] ?? null;
+const inputPath = args.find((a) => !a.startsWith('--'));
 if (!inputPath) {
-  console.error('Usage: pnpm analyze-closer-batch -- <path-to-dir-or-file>');
+  console.error('Usage: pnpm analyze-closer-batch -- <path-to-dir-or-file> [--closer-id=<uuid>]');
   process.exit(1);
 }
 
@@ -48,14 +50,17 @@ const stat = statSync(resolvedInput);
 let files: string[];
 if (stat.isDirectory()) {
   files = readdirSync(resolvedInput)
-    .filter((f) => f.toLowerCase().endsWith('.txt'))
+    .filter((f) => {
+      const lower = f.toLowerCase();
+      return lower.endsWith('.txt') || !lower.includes('.');
+    })
     .map((f) => resolve(resolvedInput, f));
 } else {
   files = [resolvedInput];
 }
 
 if (files.length === 0) {
-  console.error('No .txt files found in', resolvedInput);
+  console.error('No transcript files found in', resolvedInput);
   process.exit(1);
 }
 
@@ -162,6 +167,7 @@ async function main() {
         sourceType: 'fechamento',
         sourceFile: filename,
         transcript: transcript.trim(),
+        closerId: closerIdFlag,
         status: 'processando',
         rubricVersion: CLOSER_RUBRIC_VERSION,
       })

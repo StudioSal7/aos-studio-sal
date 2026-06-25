@@ -134,3 +134,94 @@ export interface SdrAnalysisResult {
 export interface RunSdrAnalysisInput {
   thread: string;
 }
+
+// ──────────────── Role-play SPIN (treino comercial — roleplay-spin-v1) ───────
+// A closer treina perguntas SPIN conversando com um "lead" simulado pela IA.
+// O score é end-of-session (1 chamada unificada, igual à closer) e calculado
+// no código a partir das nota_0_10 por critério que o modelo devolve.
+
+export type RoleplayDifficulty = 'facil' | 'medio' | 'dificil';
+
+// Cenário como DADO de entrada do motor (vem do DB, mas o motor é puro).
+export interface RoleplayScenario {
+  name: string;
+  persona: string; // quem é o lead (idade, contexto, dor latente)
+  context: string; // situação comercial (origem, momento da jornada)
+  objections: string[]; // objeções/resistências realistas
+  spinFocus: string[]; // ex: ["implicacao","necessidade"]
+  difficulty: RoleplayDifficulty; // quão guardado é o lead
+}
+
+// Mensagem do histórico passado ao motor de turno (sem 'system').
+export interface RoleplayMessage {
+  role: 'prospect' | 'closer';
+  content: string;
+}
+
+// Próxima fala do prospect (lead simulado).
+export interface RoleplayTurnOutput {
+  fala: string;
+}
+
+// 5 critérios SPIN, nota crua 0–10 (a nota global é ponderada no código).
+export interface RoleplayScoreBreakdown {
+  situacao: number; // S — mapeou contexto sem interrogatório
+  problema: number; // P — fez o lead admitir insatisfação/dor
+  implicacao: number; // I — fez o lead sentir o custo de não resolver
+  necessidade: number; // N — fez o lead verbalizar o valor de resolver
+  conducao_escuta: number; // não pitchou cedo, aprofundou follow-up
+}
+
+// Trecho literal da sessão (melhor momento).
+export interface RoleplayEvidence {
+  texto: string;
+  trecho: string; // citação literal da sessão
+}
+
+// Pergunta fraca da closer + reescrita mais forte ("dê exemplos de como fazer").
+export interface RoleplayQuestionRewrite {
+  original: string;
+  reescrita: string;
+}
+
+// Pergunta-modelo de implicação/necessidade que cabia no cenário.
+export interface RoleplayModelQuestion {
+  etapa: string; // ex: "implicacao", "necessidade"
+  pergunta: string;
+}
+
+// Dossiê de feedback — gravado no jsonb feedback.
+export interface RoleplayFeedbackDossier {
+  leitura_1_linha: string;
+  notas: RoleplayScoreBreakdown; // 0–10 por critério (cru do modelo)
+  melhores_momentos: RoleplayEvidence[]; // 3, com trecho literal
+  perguntas_fracas: RoleplayQuestionRewrite[]; // 3, original + reescrita
+  perguntas_modelo: RoleplayModelQuestion[]; // 2 de implicação/necessidade
+  proximo_foco: string; // 1 frase
+}
+
+// Resultado final da análise do treino.
+export interface RoleplayAnalysisResult {
+  overallScore: number; // 0–100 (sempre calculado no código)
+  breakdown: RoleplayScoreBreakdown;
+  feedback: RoleplayFeedbackDossier;
+  summary: string; // = feedback.leitura_1_linha
+  model: string;
+}
+
+export interface RunRoleplayAnalysisInput {
+  scenario: RoleplayScenario;
+  transcript: string; // sessão completa formatada (closer/prospect)
+}
+
+export interface RunRoleplayTurnInput {
+  scenario: RoleplayScenario;
+  history: RoleplayMessage[]; // turnos anteriores (closer/prospect)
+}
+
+// Rascunho de cenário extraído de uma transcrição — para revisão humana.
+export interface RoleplayScenarioDraft {
+  persona: string;
+  context: string;
+  objections: string[];
+}

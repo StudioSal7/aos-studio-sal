@@ -36,6 +36,34 @@
       "when": 1780325262242,
       "tag": "0004_lonely_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781545108451,
+      "tag": "0005_brave_abomination",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781555935467,
+      "tag": "0006_futuristic_runaways",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782156736057,
+      "tag": "0007_glossy_reavers",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782263458649,
+      "tag": "0008_known_malcolm_colcord",
+      "breakpoints": true
     }
   ]
 }

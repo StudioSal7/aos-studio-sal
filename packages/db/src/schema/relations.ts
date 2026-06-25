@@ -1,5 +1,8 @@
 import { relations } from 'drizzle-orm';
 import { commercialAnalyses } from './commercial-analyses';
+import { formFields } from './form-fields';
+import { formResponses } from './form-responses';
+import { forms } from './forms';
 import { leadActionLog } from './lead-action-log';
 import { leadFieldAudit } from './lead-field-audit';
 import { leadIntakeLog } from './lead-intake-log';
@@ -10,6 +13,9 @@ import { leadStages } from './lead-stages';
 import { leads } from './leads';
 import { meetings } from './meetings';
 import { products } from './products';
+import { roleplayMessages } from './roleplay-messages';
+import { roleplayScenarios } from './roleplay-scenarios';
+import { roleplaySessions } from './roleplay-sessions';
 import { users } from './users';
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
@@ -45,6 +51,31 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
   actionLog: many(leadActionLog),
   intakeLog: many(leadIntakeLog),
   commercialAnalyses: many(commercialAnalyses),
+  roleplaySessions: many(roleplaySessions),
+  formResponses: many(formResponses),
+}));
+
+export const formsRelations = relations(forms, ({ many }) => ({
+  fields: many(formFields),
+  responses: many(formResponses),
+}));
+
+export const formFieldsRelations = relations(formFields, ({ one }) => ({
+  form: one(forms, {
+    fields: [formFields.formId],
+    references: [forms.id],
+  }),
+}));
+
+export const formResponsesRelations = relations(formResponses, ({ one }) => ({
+  form: one(forms, {
+    fields: [formResponses.formId],
+    references: [forms.id],
+  }),
+  lead: one(leads, {
+    fields: [formResponses.leadId],
+    references: [leads.id],
+  }),
 }));
 
 export const commercialAnalysesRelations = relations(commercialAnalyses, ({ one }) => ({
@@ -55,6 +86,29 @@ export const commercialAnalysesRelations = relations(commercialAnalyses, ({ one 
   createdByUser: one(users, {
     fields: [commercialAnalyses.createdBy],
     references: [users.id],
+  }),
+}));
+
+export const roleplayScenariosRelations = relations(roleplayScenarios, ({ many }) => ({
+  sessions: many(roleplaySessions),
+}));
+
+export const roleplaySessionsRelations = relations(roleplaySessions, ({ one, many }) => ({
+  scenario: one(roleplayScenarios, {
+    fields: [roleplaySessions.scenarioId],
+    references: [roleplayScenarios.id],
+  }),
+  lead: one(leads, {
+    fields: [roleplaySessions.leadId],
+    references: [leads.id],
+  }),
+  messages: many(roleplayMessages),
+}));
+
+export const roleplayMessagesRelations = relations(roleplayMessages, ({ one }) => ({
+  session: one(roleplaySessions, {
+    fields: [roleplayMessages.sessionId],
+    references: [roleplaySessions.id],
   }),
 }));
 

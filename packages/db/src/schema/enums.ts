@@ -37,6 +37,8 @@ export const intakeSourceEnum = pgEnum('intake_source', [
   'respondi_webhook',
   'legacy_csv_import',
   'manual',
+  // Formulário self-hosted (substitui o Respondi) — ver schema/forms.ts
+  'formulario_web',
 ]);
 export const intakeStatusEnum = pgEnum('intake_status', ['ok', 'duplicate_upsert', 'failed']);
 export const actionCompletionKindEnum = pgEnum('action_completion_kind', ['done', 'replaced']);
@@ -50,4 +52,46 @@ export const analysisStatusEnum = pgEnum('analysis_status', [
   'erro',
   // SDR: conversa puxada não é de pré-venda (contato frio, recado interno, etc.).
   'nao_aplicavel',
+]);
+
+// Treino comercial — role-play SPIN (lead simulado por IA)
+export const roleplaySessionStatusEnum = pgEnum('roleplay_session_status', [
+  'em_andamento',
+  'concluida',
+  'abandonada',
+]);
+export const roleplayMessageRoleEnum = pgEnum('roleplay_message_role', [
+  'prospect', // fala do lead simulado pela IA
+  'closer', // fala de quem treina
+  'system', // mensagem de sistema (abertura/contexto)
+]);
+export const roleplayDifficultyEnum = pgEnum('roleplay_difficulty', [
+  'facil',
+  'medio',
+  'dificil',
+]);
+
+// Formulários self-hosted (Typeform-style) — substituem o Respondi.app
+export const formStatusEnum = pgEnum('form_status', [
+  'rascunho',
+  'ativo',
+  'pausado',
+  'encerrado',
+]);
+// 13 tipos de campo (espelha o motor portado do ba-hub). boas_vindas e
+// encerramento são telas (não coletam resposta).
+export const formFieldTypeEnum = pgEnum('form_field_type', [
+  'boas_vindas',
+  'texto_curto',
+  'texto_longo',
+  'email',
+  'telefone',
+  'url',
+  'numero',
+  'data',
+  'select',
+  'multi_select',
+  'escala',
+  'sim_nao',
+  'encerramento',
 ]);

@@ -11,7 +11,7 @@
 
 import { sql } from 'drizzle-orm';
 import { db } from './client';
-import { leadLossReasons, leadSources, leadStages } from './schema/index';
+import { leadLossReasons, leadSources, leadStages, roleplayScenarios } from './schema/index';
 
 const STAGES = [
   { slug: 'application_received', displayName: 'Aplicação recebida', position: 1, kind: 'open' as const },
@@ -47,7 +47,48 @@ const SOURCES = [
   { slug: 'indicacao_pessoal', displayName: 'Indicação pessoal' },
   { slug: 'tiktok', displayName: 'TikTok' },
   { slug: 'podcast', displayName: 'Podcast' },
+  { slug: 'formulario', displayName: 'Formulário (web)' },
   { slug: 'outro', displayName: 'Outro' },
+];
+
+// Cenários de treino role-play SPIN — genéricos (lead simulado de branding
+// pessoal feminino), sem nome de cliente real. Owner pode editar/criar mais via UI.
+const ROLEPLAY_SCENARIOS = [
+  {
+    name: 'Curiosa morna (aquecimento)',
+    persona:
+      'Mulher, ~32 anos, empreendedora iniciante numa profissão criativa. Sente que "não aparece" online mas ainda não nomeia isso como problema sério. Otimista, fala bastante.',
+    context:
+      'Veio de um conteúdo orgânico no Instagram e preencheu o formulário por curiosidade. Está no topo da jornada, ainda explorando se faz sentido investir em marca pessoal.',
+    objections: ['Será que é a hora certa?', 'Não sei se tenho conteúdo suficiente pra postar'],
+    spinFocus: ['situacao', 'problema'],
+    difficulty: 'facil' as const,
+  },
+  {
+    name: 'Ocupada e cética (intermediário)',
+    persona:
+      'Mulher, ~40 anos, profissional estabelecida com agenda cheia. Já tentou cuidar da própria marca antes e não viu resultado. Respostas objetivas, pouco tempo, mede a closer.',
+    context:
+      'Veio por indicação e topou uma conversa, mas chega desconfiada — quer entender rápido se "vale a pena" antes de se abrir.',
+    objections: ['Não tenho tempo pra isso', 'Já tentei e não funcionou', 'Preço'],
+    spinFocus: ['problema', 'implicacao'],
+    difficulty: 'medio' as const,
+  },
+  {
+    name: 'Guardada e racional (difícil)',
+    persona:
+      'Mulher, ~45 anos, muito analítica e reservada. Decisora exigente, tem capacidade de investir mas só se convence pela lógica. Dá respostas curtas, não entrega a dor sem ser provocada com boas perguntas.',
+    context:
+      'Pediu a reunião depois de pesquisar bastante. Está comparando opções e resiste a qualquer pressão; só se abre diante de perguntas de implicação e necessidade bem construídas.',
+    objections: [
+      'Preciso pensar com calma',
+      'Qual a diferença de vocês para os concorrentes?',
+      'Não quero decidir no impulso',
+      'Preço alto',
+    ],
+    spinFocus: ['implicacao', 'necessidade'],
+    difficulty: 'dificil' as const,
+  },
 ];
 
 async function seed() {
@@ -76,6 +117,14 @@ async function seed() {
       .insert(leadSources)
       .values(source)
       .onConflictDoNothing({ target: leadSources.slug });
+  }
+
+  console.warn('Seeding roleplay_scenarios...');
+  for (const scenario of ROLEPLAY_SCENARIOS) {
+    await db
+      .insert(roleplayScenarios)
+      .values(scenario)
+      .onConflictDoNothing({ target: roleplayScenarios.name });
   }
 
   console.warn('✅ Seed complete.');

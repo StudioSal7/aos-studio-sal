@@ -75,6 +75,26 @@ Notas dos blocos 0–10; global = soma ponderada ×10 → 0–100 (calculada no 
 
 **Detecção de não-aplicabilidade:** o prompt decide se a conversa é mesmo de pré-venda SDR. Se não for (contato frio, recado interno do time, grupo), a análise é gravada com `status='nao_aplicavel'` (fora dos KPIs) em vez de receber nota enganosa.
 
+### Treino role-play SPIN (`roleplay-spin-v1`, `@repo/commercial/roleplay` ✅)
+Espaço para a closer **treinar antes** da call real: conversa com um "lead" simulado por IA e recebe nota + feedback com exemplos de reescrita. Persona/contexto/objeções vêm de `roleplay_scenarios` (dados); quem treina, de `trainee_label` (dropdown de `users.role='closer'`). **Zero string de cliente no core.**
+
+| Critério | Peso | O que mede |
+|---|---|---|
+| `situacao` (S) | 10% | mapeou contexto sem interrogatório |
+| `problema` (P) | 15% | fez o lead admitir insatisfação/dor |
+| `implicacao` (I) | 30% | fez o lead sentir o custo de não resolver |
+| `necessidade` (N) | 30% | fez o lead verbalizar o valor de resolver |
+| `conducao_escuta` | 15% | não pitchou cedo, aprofundou follow-up |
+
+Notas 0–10 por critério; global = soma ponderada ×10 → 0–100 (**calculada no código**, `computeRoleplayOverallScore`). **Score é end-of-session** (nunca ao vivo por turno).
+
+**Motor puro (sem DB), 3 funções:**
+- `runRoleplayTurn(scenario, history)` → próxima fala do prospect. `callGPT4oChat` (texto multi-turno, temp 0.7); closer→user, prospect→assistant. Lead realista que **não entrega a dor de graça**; `difficulty` controla o quão guardado é.
+- `runRoleplayAnalysis(scenario, transcript)` → **1 chamada gpt-4o unificada** (notas + dossiê). Dossiê: leitura 1 linha, 3 melhores momentos (trecho literal), 3 perguntas fracas + reescrita, 2 perguntas-modelo, próximo foco. Parsing manual + clamp 0–10.
+- `scenarioFromTranscript(transcript)` → rascunho `{persona, context, objections}` para revisão humana (reusa limpeza/compressão da closer).
+
+**UI** (`apps/crm/src/app/(crm)/comercial/treino/`): `page.tsx` (tendência por trainee + iniciar treino + histórico), `[sessionId]/page.tsx` (chat + dossiê, `maxDuration=300` p/ a análise final), `cenarios/page.tsx` (CRUD + extração, `maxDuration=60`). Actions em `server/actions/treino.ts`, queries em `server/queries/treino.ts`. Mensagens persistidas em `roleplay_messages` (treino É gravado). Testes do motor: `packages/commercial/src/roleplay/__tests__/` (14 — cálculo de score, parsing, ordem de mensagens).
+
 ---
 
 ## Ingestão SDR: pull sob demanda via Evolution API ✅

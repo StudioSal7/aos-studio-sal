@@ -3,7 +3,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 type SetAllCookies = Parameters<NonNullable<CookieMethodsServer['setAll']>>[0];
 
-const PUBLIC_PATHS = ['/login', '/auth/callback'];
+// '/f/' = rota pública dos formulários self-hosted (substituem o Respondi).
+// Trailing slash garante que só /f/<slug> seja público (não um futuro /foo).
+const PUBLIC_PATHS = ['/login', '/auth/callback', '/f/'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

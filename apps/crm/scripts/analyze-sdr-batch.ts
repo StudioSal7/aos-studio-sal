@@ -31,7 +31,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import { runSdrAnalysis, SDR_RUBRIC_VERSION } from '@repo/commercial';
@@ -49,9 +49,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Leitura é local (store da Evolution) → não precisa dos 65s do closer. Só espaça
 // as chamadas gpt-4o para folgar o TPM. 429 já tem backoff em openai.ts.
 const THROTTLE_MS = Number(process.env.SDR_BATCH_THROTTLE_MS ?? 3000);
-const MAX_BATCH = Number(process.env.SDR_BATCH_LIMIT ?? 15);
+const MAX_BATCH = Number(process.env.SDR_BATCH_LIMIT ?? 15); // meta de ANÁLISES (não de slots)
+// Teto de conversas examinadas (findMessages é leitura local barata). Sem isto, com
+// muitos leads de 1 msg, varreríamos a base inteira atrás de MAX_BATCH analisáveis.
+const SCAN_LIMIT = Number(process.env.SDR_BATCH_SCAN ?? Math.max(60, MAX_BATCH * 5));
 const PULL_LIMIT = 500; // mesmo limite do fluxo sob demanda; chats reais têm ~20–35 msgs.
-const MIN_MESSAGES = 4;
+const MIN_MESSAGES = 2; // troca mínima de 2 mensagens para haver o que pontuar.
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -70,7 +73,11 @@ type Outcome =
   | { kind: 'analyzed'; label: string; id: string; score: number; summary: string }
   | { kind: 'nao_aplicavel'; label: string; id: string; reason: string }
   | { kind: 'failed'; label: string; error: string }
-  | { kind: 'skipped'; label: string; reason: 'already_analyzed' | 'empty' | 'not_commercial' };
+  | {
+      kind: 'skipped';
+      label: string;
+      reason: 'already_analyzed' | 'empty' | 'sem_resposta_sdr' | 'not_commercial';
+    };
 
 const outcomes: Outcome[] = [];
 
@@ -182,26 +189,32 @@ async function main() {
     };
   });
 
-  // 2. Prioriza casadas (recentes primeiro), completa com não-casadas recentes.
+  // 2. Prioriza casadas (recentes primeiro), depois não-casadas recentes.
   const byRecency = (a: Candidate, b: Candidate) => b.lastMessageAt - a.lastMessageAt;
   const matchedCands = candidates.filter((c) => c.leadId).sort(byRecency);
   const unmatchedCands = candidates.filter((c) => !c.leadId).sort(byRecency);
-  const selected = [...matchedCands, ...unmatchedCands].slice(0, MAX_BATCH);
+  const queue = [...matchedCands, ...unmatchedCands];
 
   console.log(
     `Chats individuais: ${candidates.length} (casados: ${matchedCands.length}). ` +
-      `Selecionados para este lote: ${selected.length}\n`,
+      `Meta: ${MAX_BATCH} análises · varre até ${SCAN_LIMIT} conversas.\n`,
   );
 
   // 3. Idempotência: o que já tem análise SDR?
   const existing = await getExistingSdr();
 
-  // 4. Processa cada conversa selecionada.
-  for (let i = 0; i < selected.length; i++) {
-    const cand = selected[i]!;
+  // 4. Percorre a fila até completar MAX_BATCH ANÁLISES (não slots): conversas
+  //    puladas (idempotência / curtas / sem resposta) NÃO consomem a meta, então
+  //    leads de 1 msg não roubam o lugar de conversas ricas mais abaixo na fila.
+  //    `scanned` (= chamadas findMessages) é limitado por SCAN_LIMIT.
+  let analyzedCount = 0;
+  let scanned = 0;
+  for (const cand of queue) {
+    if (analyzedCount >= MAX_BATCH || scanned >= SCAN_LIMIT) break;
     const label = cand.leadName || cand.displayName || cand.phoneDigits || cand.remoteJid;
 
     // Idempotência: pula se o chat já foi analisado, ou se o lead já tem SDR.
+    // (Não conta em `scanned` — é só leitura do conjunto já carregado.)
     if (
       existing.sourceFiles.has(cand.remoteJid) ||
       (cand.leadId && existing.leadIds.has(cand.leadId))
@@ -226,6 +239,7 @@ async function main() {
     }
 
     // SEGURANÇA: lê do store local. Vazio → pula, nunca força sync.
+    scanned++;
     let messages;
     try {
       messages = await findMessages(cand.remoteJid, { limit: PULL_LIMIT });
@@ -242,13 +256,17 @@ async function main() {
       continue;
     }
 
-    // Pré-filtro leve: precisa de troca de parte a parte. (Ciente: leads sem
-    // resposta do SDR caem aqui — reavaliar afrouxar após a call.)
+    // Pré-filtro: precisa de troca de parte a parte para haver o que pontuar.
     const hasInbound = messages.some((m) => !m.key.fromMe);
     const hasOutbound = messages.some((m) => m.key.fromMe);
     if (messages.length < MIN_MESSAGES || !hasInbound || !hasOutbound) {
-      console.log(`  ⟳ skip (não comercial)      ${label}`);
-      outcomes.push({ kind: 'skipped', label, reason: 'not_commercial' });
+      // Distingue o caso que interessa à operação: lead falou e o SDR não
+      // respondeu (sem resposta), do resto (curta / só outbound ignorado).
+      const reason: 'sem_resposta_sdr' | 'not_commercial' =
+        hasInbound && !hasOutbound ? 'sem_resposta_sdr' : 'not_commercial';
+      const tag = reason === 'sem_resposta_sdr' ? 'sem resposta do SDR' : 'não comercial';
+      console.log(`  ⟳ skip (${tag})${' '.repeat(Math.max(1, 14 - tag.length))}${label}`);
+      outcomes.push({ kind: 'skipped', label, reason });
       continue;
     }
 
@@ -278,6 +296,7 @@ async function main() {
       continue;
     }
     const analysisId = inserted.id;
+    analyzedCount++; // consumimos um slot da meta ao disparar a análise gpt-4o.
 
     try {
       const result = await runSdrAnalysis({ thread });
@@ -330,12 +349,13 @@ async function main() {
       outcomes.push({ kind: 'failed', label, error: msg });
     }
 
-    // Throttle entre análises (não dorme após a última).
-    if (i < selected.length - 1) await sleep(THROTTLE_MS);
+    // Throttle entre análises (não dorme se já batemos a meta).
+    if (analyzedCount < MAX_BATCH) await sleep(THROTTLE_MS);
   }
 
+  console.log(`\nVarridas ${scanned} conversas · ${analyzedCount} análises disparadas neste run.`);
   writeReport();
-  printRankedSummary();
+  await printRankedSummaryFromDb();
   console.log('\nDone. Relatório: apps/crm/tmp/analise-sdr-report.md');
   // @repo/db/client não expõe o client postgres.js; a pool aberta segura o event
   // loop. Encerra explicitamente — o trabalho e o relatório já foram persistidos.
@@ -350,54 +370,53 @@ function firstLine(s: string, max = 100): string {
   return clean.length > max ? clean.slice(0, max - 1) + '…' : clean;
 }
 
-function printRankedSummary() {
-  const analyzed = outcomes
-    .filter((o): o is Extract<Outcome, { kind: 'analyzed' }> => o.kind === 'analyzed')
-    .sort((a, b) => b.score - a.score);
-  const naoAplicavel = outcomes.filter((o) => o.kind === 'nao_aplicavel');
-  const failed = outcomes.filter((o) => o.kind === 'failed');
-  const skippedNotCommercial = outcomes.filter(
-    (o) => o.kind === 'skipped' && o.reason === 'not_commercial',
-  );
-  const skippedEmpty = outcomes.filter((o) => o.kind === 'skipped' && o.reason === 'empty');
-  const skippedAlready = outcomes.filter(
-    (o) => o.kind === 'skipped' && o.reason === 'already_analyzed',
-  );
+/**
+ * Ranking lido do BANCO (todas as análises SDR concluídas, de todos os runs),
+ * não só as deste run — assim o resumo reflete o acervo completo de destaques
+ * mesmo quando o run atual só pulou conversas já analisadas.
+ */
+async function printRankedSummaryFromDb() {
+  const rows = await db
+    .select({
+      title: schema.commercialAnalyses.title,
+      score: schema.commercialAnalyses.overallScore,
+      summary: schema.commercialAnalyses.scoreSummary,
+      leadId: schema.commercialAnalyses.leadId,
+    })
+    .from(schema.commercialAnalyses)
+    .where(
+      and(
+        eq(schema.commercialAnalyses.analyzer, 'sdr'),
+        eq(schema.commercialAnalyses.status, 'concluido'),
+      ),
+    )
+    .orderBy(desc(schema.commercialAnalyses.overallScore));
 
   const bar = '═'.repeat(78);
   console.log('\n' + bar);
-  console.log('RESUMO RANQUEADO — análise SDR (maior score primeiro)');
+  console.log('RESUMO RANQUEADO — análises SDR no banco (maior score primeiro)');
   console.log(bar);
 
-  if (analyzed.length === 0) {
-    console.log('\n(nenhuma conversa pontuada neste lote)');
+  if (rows.length === 0) {
+    console.log('\n(nenhuma conversa pontuada ainda)');
   } else {
-    for (const a of analyzed) {
-      const score = String(a.score).padStart(3);
-      console.log(`\n[${score}] ${a.label}`);
-      console.log(`      ${firstLine(a.summary)}`);
+    for (const r of rows) {
+      const score = String(r.score ?? 0).padStart(3);
+      const link = r.leadId ? '  ·  lead vinculado' : '';
+      console.log(`\n[${score}] ${r.title.replace(/^SDR – /, '')}${link}`);
+      console.log(`      ${firstLine(r.summary ?? '')}`);
     }
   }
 
-  if (naoAplicavel.length > 0) {
-    console.log('\n' + '─'.repeat(78));
-    console.log('Não aplicáveis (sem nota):');
-    for (const n of naoAplicavel) {
-      if (n.kind === 'nao_aplicavel') console.log(`  • ${n.label} — ${firstLine(n.reason, 70)}`);
-    }
-  }
-
-  if (failed.length > 0) {
-    console.log('\nFalhas:');
-    for (const f of failed) {
-      if (f.kind === 'failed') console.log(`  • ${f.label} — ${firstLine(f.error, 70)}`);
-    }
-  }
+  // Contagens DESTE run (não do acervo) para explicar a saída.
+  const count = (r: string) =>
+    outcomes.filter((o) => o.kind === 'skipped' && o.reason === r).length;
 
   console.log('\n' + '─'.repeat(78));
   console.log(
-    `Puladas → já analisadas: ${skippedAlready.length} · ` +
-      `não comercial: ${skippedNotCommercial.length} · sem mensagens: ${skippedEmpty.length}`,
+    `Este run → já analisadas: ${count('already_analyzed')} · ` +
+      `sem resposta do SDR: ${count('sem_resposta_sdr')} · ` +
+      `não comercial: ${count('not_commercial')} · sem mensagens: ${count('empty')}`,
   );
   console.log(bar);
 }

@@ -49,6 +49,21 @@
   }
 }
 
+/* Tokens de override para formulário com fundo fotográfico escuro.
+   Aplicado pelo form-runtime quando form.config.backgroundImage está presente.
+   Os utilities do Tailwind (text-ink, bg-paper, border-line, etc.) herdam
+   os valores sobrescritos automaticamente via CSS custom property cascade. */
+.form-on-photo {
+  --color-ink: #ffffff;
+  --color-ink-muted: rgba(255, 255, 255, 0.62);
+  --color-ink-hover: rgba(255, 255, 255, 0.88);
+  --color-paper: rgba(255, 255, 255, 0.07);
+  --color-line: rgba(255, 255, 255, 0.30);
+  --color-canvas: transparent;
+  --color-wood: #6b7843;
+  --color-wood-hover: #596635;
+}
+
 @utility text-display {
   font-family: var(--font-serif);
   font-size: 60px;

@@ -48,6 +48,7 @@ export const commercialAnalyses = pgTable(
     // Permite filtrar/comparar análises sem misturar histórico quando a régua evoluir.
     rubricVersion: text('rubric_version'),
 
+    closerId: uuid('closer_id').references(() => users.id, { onDelete: 'set null' }),
     createdBy: uuid('created_by').references(() => users.id),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

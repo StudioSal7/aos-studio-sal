@@ -15,6 +15,8 @@ import {
   ClipboardCheck,
   MessageSquareText,
   ListTodo,
+  Dumbbell,
+  FileText,
   type LucideIcon,
 } from 'lucide-react';
 import { requireAuth } from '@/server/auth';
@@ -54,6 +56,7 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
           <NavGroup label="comercial">
             <NavItem href={"/analise/closer" as Route<string>} label="análise closer." icon={ClipboardCheck} />
             <NavItem href={"/analise/sdr" as Route<string>} label="análise sdr." icon={MessageSquareText} />
+            <NavItem href={"/comercial/treino" as Route<string>} label="treino spin." icon={Dumbbell} />
             {isOwner && <NavItem href="/vendas-sal" label="vendas sal." icon={ShoppingBag} />}
           </NavGroup>
 
@@ -63,6 +66,13 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="space-y-3 border-t border-line p-4">
+          {isOwner && (
+            <NavItem
+              href={'/admin/formularios' as Route<string>}
+              label="formulários."
+              icon={FileText}
+            />
+          )}
           {isOwner && <NavItem href="/admin" label="admin." icon={Shield} />}
           <p className="text-micro text-ink-muted normal-case tracking-normal">
             <kbd className="mr-1 inline-block border border-line bg-canvas px-1.5 py-0.5 text-[10px]">

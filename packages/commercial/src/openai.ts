@@ -29,6 +29,12 @@ export interface CallGPTOptions {
   temperature?: number; // default 0.3
 }
 
+// Mensagem de chat multi-turno (usada no role-play; closer→user, prospect→assistant).
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 function isRateLimit(err: unknown): boolean {
   return Boolean(err && typeof err === 'object' && (err as { status?: number }).status === 429);
 }
@@ -86,6 +92,50 @@ export async function callGPT4oJSON(
       return JSON.parse(jsonStr);
     } catch (err) {
       // Truncamento é erro determinístico — não adianta repetir com o mesmo max_tokens.
+      if (err instanceof TruncatedResponseError) throw err;
+
+      lastError = err as Error;
+      if (attempt < maxAttempts - 1) {
+        await new Promise((r) => setTimeout(r, retryAfterMs(err, attempt)));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+/**
+ * Chama o GPT em modo chat multi-turno, retornando TEXTO puro (não JSON).
+ * Usado nos turnos do role-play, onde a fala do lead simulado deve ser natural.
+ * Mesma lógica de retry/backoff e guarda de truncamento que callGPT4oJSON.
+ */
+export async function callGPT4oChat(
+  messages: ChatMessage[],
+  opts: CallGPTOptions = {},
+): Promise<string> {
+  const client = getClient();
+  const model = opts.model ?? OPENAI_MODEL;
+  const maxTokens = opts.maxTokens;
+  const temperature = opts.temperature ?? 0.3;
+  const maxAttempts = 5;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const response = await client.chat.completions.create({
+        model,
+        temperature,
+        ...(maxTokens ? { max_tokens: maxTokens } : {}),
+        messages,
+      });
+
+      const choice = response.choices[0];
+      if (choice?.finish_reason === 'length') {
+        throw new TruncatedResponseError(maxTokens ?? 0);
+      }
+
+      return (choice?.message.content ?? '').trim();
+    } catch (err) {
       if (err instanceof TruncatedResponseError) throw err;
 
       lastError = err as Error;

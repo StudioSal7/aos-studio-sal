@@ -18,9 +18,14 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `/dashboard` | `(crm)/dashboard/page.tsx` | Pipeline bruto + métricas |
 | `/saude` | `(crm)/saude/page.tsx` | requires_attention=true |
 | `/admin` | `(crm)/admin/page.tsx` | Owner only |
+| `/admin/formularios` | `(crm)/admin/formularios/page.tsx` | Owner only — lista de formulários + criar |
+| `/admin/formularios/[id]` | `(crm)/admin/formularios/[id]/page.tsx` | Owner only — editor (builder dnd + autosave) |
+| `/admin/formularios/[id]/respostas` | `(crm)/admin/formularios/[id]/respostas/page.tsx` | Owner only — respostas + link p/ lead |
+| `/f/[slug]` | `app/f/[slug]/page.tsx` | **Público** (fora do auth) — runtime do formulário |
 | `/login` | `app/login/page.tsx` | Página de login |
 | `/auth/callback` | `app/auth/callback/route.ts` | Supabase OAuth callback |
-| `POST /api/webhooks/leads/respondi` | `app/api/webhooks/leads/respondi/route.ts` | Entrada de leads |
+| `POST /api/webhooks/leads/respondi` | `app/api/webhooks/leads/respondi/route.ts` | Entrada de leads (Respondi) |
+| `POST /api/forms/submit` | `app/api/forms/submit/route.ts` | **Público** — submit de formulário self-hosted → cria lead |
 | `GET /api/crons/meeting-prompt` | `app/api/crons/meeting-prompt/route.ts` | */15 min |
 | `GET /api/crons/sla-check` | `app/api/crons/sla-check/route.ts` | Diário 11h UTC (8h SP) |
 | `GET /api/crons/data-quality` | `app/api/crons/data-quality/route.ts` | Segunda 11h UTC (8h SP) |
@@ -35,6 +40,7 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `server/actions/meetings.ts` | `scheduleMeetingAction`, `rescheduleMeetingAction`, `completeMeetingAction` |
 | `server/actions/users.ts` | `inviteUserAction` |
 | `server/actions/search.ts` | `searchLeadsForPalette(query)` — reusa `searchLeads` do query builder; usado pelo Cmd+K |
+| `server/actions/forms.ts` | **owner-only** — `createFormAction`, `updateFormAction`, `deleteFormAction`, `duplicateFormAction`, `addFieldAction`, `updateFieldAction`, `deleteFieldAction`, `reorderFieldsAction` |
 
 ---
 
@@ -44,6 +50,8 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 |---|---|---|
 | `server/lib/whatsapp-normalizer/` | Puro | 24 passando |
 | `server/lib/respondi-payload-mapper/` | Puro | 29 passando |
+| `server/lib/form-answer-mapper/` | Puro | 14 passando |
+| `server/lib/lead-intake/` | Usa DB | Sem testes (compartilhado: form submit; webhook Respondi segue inline) |
 | `server/lib/stage-transition-validator/` | Puro | 8 passando |
 | `server/lib/legacy-csv-parser/` | Puro + fixtures | 32 passando |
 | `server/lib/dedup-matcher/` | Integração DB | 8 (skip sem DATABASE_URL) |

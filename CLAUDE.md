@@ -90,7 +90,7 @@ packages/
 
 ---
 
-## Schema (12 tabelas)
+## Schema (20 tabelas)
 
 | Tabela | Descrição |
 |---|---|
@@ -106,6 +106,14 @@ packages/
 | `lead_field_audit` | Append-only — subset de campos críticos auditados |
 | `lead_action_log` | Append-only — ações registradas |
 | `lead_intake_log` | Append-only — log de webhooks e imports |
+| `sal_sales` | Vendas Sal (owner only) |
+| `commercial_analyses` | Análises CallScore (closer/sdr) — `score_breakdown`/`extracted_data` jsonb |
+| `roleplay_scenarios` | Cenários de treino SPIN (persona/contexto/objeções do lead simulado) |
+| `roleplay_sessions` | Sessões de treino — `overall_score` (CHECK 0–100), `score_breakdown`/`feedback` jsonb |
+| `roleplay_messages` | Mensagens da sessão (append-only) — `role` prospect/closer/system, `turn_index` |
+| `forms` | Formulários self-hosted (substituem o Respondi) — `slug` único, `status` rascunho/ativo/pausado/encerrado, `config` jsonb (tema/redirect/UTM) |
+| `form_fields` | Campos do formulário — 13 tipos, `ordem`, `config` jsonb, **`lead_mapping`** (coluna do lead) + **`lead_enum_map`** jsonb (opção→literal de enum) |
+| `form_responses` | Respostas cruas (auditoria) — `dados` jsonb, `lead_id` FK (set null), `metadata` UTM |
 
 ---
 
@@ -131,6 +139,8 @@ pnpm typecheck              # tsc --noEmit
 
 # Scripts
 pnpm --filter crm import-legacy -- ./caminho/para/arquivo.csv
+pnpm --filter crm analyze-closer-batch -- ./caminho/para/transcricoes/   # lote closer (.txt)
+pnpm --filter crm analyze-sdr-batch                                      # lote SDR (lê store Evolution)
 ```
 
 ---
@@ -194,8 +204,9 @@ NEXT_PUBLIC_OPERATION_TZ=America/Sao_Paulo
 - `vercel.json` com schedules dos 3 crons
 - **Identidade visual Studio Sal**: tokens semânticos em `globals.css` (canvas/paper/ink/wood/leaf/clay), Gowun Batang via `next/font`, radius zerado em `@theme`, ícones lucide-react na sidebar, paleta terrosa nos sinais de lead
 - Componentes UI locais em `apps/crm/src/components/ui/`: Button, Input, Textarea, Select, Label, Card, Modal, Badge, PageHeader + primitivos shadcn (Sheet, Tabs, Command)
+- **Formulários self-hosted (substituem o Respondi)**: motor Typeform portado do `ba-hub`, re-tematizado com tokens Studio Sal. Builder admin owner-only (`(crm)/admin/formularios/`: lista, editor com dnd-kit + autosave, respostas), 13 tipos de campo, rota pública `/f/[slug]` (fora do auth, liberada no middleware), submit em `POST /api/forms/submit` → cria lead pelo MESMO pipeline do Respondi (dedup + `application_received`). Detalhe na seção de decisões.
 - TypeScript: 0 erros (`tsc --noEmit`)
-- Testes: 93 passando, 8 skipped (dedup integração), 0 falhas
+- Testes: 166 passando, 8 skipped (dedup integração), 0 falhas (14 novos: `form-answer-mapper`)
 
 ### ✅ Infraestrutura conectada (concluído)
 
@@ -224,6 +235,7 @@ NEXT_PUBLIC_OPERATION_TZ=America/Sao_Paulo
 - **`import-legacy.ts` + `scheduledAt NOT NULL`**: script não passava `scheduledAt` ao criar reunião placeholder para leads com status `reunião agendada`/`reagendar encontro`. Corrigido em `apps/crm/scripts/import-legacy.ts` usando `lead.receivedAt` como fallback.
 - **`DATABASE_URL` com `%` na senha**: caractere `%` em senha do Supabase precisa ser URL-encoded como `%25` para não quebrar o parse URI do `postgres.js`. Corrigido no `.env.local` da raiz e de `apps/crm/`.
 - **`sql` template + `Date` em `getAnalysisKpis`**: mesmo padrão do `getHotLeads` — `startOfMonth` (Date JS) interpolado em `sql\`...\`` causa `ERR_INVALID_ARG_TYPE`. Corrigido em `apps/crm/src/server/queries/commercial.ts` usando `.toISOString()::timestamptz` em vez de passar o objeto Date diretamente.
+- **`leads.whatsapp_digits_only` gerada com `\D` → ficava com `+`** (migration `0005_brave_abomination`): a expressão `regexp_replace(whatsapp_e164, '\D', ...)` perdia o backslash na geração da migration (virava `'D'` no banco), então a coluna mantinha o `+` e **todo match por dígitos quebrava** (`getLeadByWhatsappDigits`, usado na UI de análise SDR Porta 2 e no lote). Corrigido para classe inequívoca `'[^0-9]'`. **Em coluna gerada, nunca usar `\d`/`\D` no `regexp_replace` — usar classe `[0-9]`/`[^0-9]`.** Trocar a expressão de uma coluna `GENERATED ALWAYS` exige `DROP`+`ADD` (Postgres não altera a expressão in-place) e **recriar o índice** que dependia dela (`leads_whatsapp_digits_idx`) — o drizzle-kit dropa a coluna mas não recria o índice.
 
 ### ⚠️ Pendente antes do go-live
 
@@ -270,6 +282,10 @@ NEXT_PUBLIC_OPERATION_TZ=America/Sao_Paulo
 - **Lowercase editorial via CSS** — `text-transform: lowercase` nas utilities `text-display/h2/h3/btn`. Usar `normal-case` para exceções pontuais (nomes próprios).
 - **Análise closer = régua v2 (Winning by Design, `@repo/commercial`)** — avalia EXECUÇÃO DO MÉTODO, nunca se fechou. 7 blocos A–G (0–10), **pesos variáveis por etapa** (`fechamento`/`diagnostico`), nota global calculada no código ×10 → **0–100** (mantém o anel/CHECK). Dossiê (detecção + leitura + desejo/implicação + acertos/falhas com trecho literal + sinais vermelhos + recomendações com script) gravado no jsonb `score_breakdown`; extração de negócio no `extracted_data`. **1 chamada gpt-4o** unificada. Detalhe completo em [`docs/estado-atual.md`](./docs/estado-atual.md).
 - **gpt-4o em todas as análises (closer e SDR), nunca fatiar a transcrição** — Tier OpenAI atual gpt-4o = 30k TPM. Throughput: limpeza determinística por código (preserva falas) → compressão extrativa via mini só se exceder `TRANSCRIPT_CEILING=22000` → batch com throttle `THROTTLE_MS=65000` + backoff/Retry-After em 429. `openai.ts` falha explicitamente em `finish_reason='length'` (nunca grava dossiê parcial).
+- **Lote SDR via Evolution = `apps/crm/scripts/analyze-sdr-batch.ts`** (`pnpm --filter crm analyze-sdr-batch`). Lê SÓ do store local (`findChats`/`findMessages`) — **nunca** desconecta/reescaneia/força sync (risco de ban). Espelha o lote closer: idempotência por `source_file` = `remoteJid` (+ skip se o lead já tem SDR), status `processando→concluido/erro`, `nao_aplicavel` sem nota. Diferenças: throttle leve `SDR_BATCH_THROTTLE_MS=3000` (leitura local); **loop por orçamento** (`MAX_BATCH` = nº de ANÁLISES, varre até `SDR_BATCH_SCAN`) para que conversas puladas não consumam slots; resumo ranqueado lido do banco; classifica skip `sem_resposta_sdr` (lead falou, SDR não respondeu) à parte. Match lead⇄conversa por mapa em memória derivado de `whatsapp_e164` (não usa a coluna gerada). Encerra com `process.exit(0)` (o `@repo/db/client` não expõe `client.end()`).
+- **⚠️ Store da Evolution NÃO tem histórico das conversas dos leads do CRM** (descoberto 06/2026): os leads cadastrados têm ~1 mensagem cada no store (histórico não sincronizado), inclusive sob `@lid`. As conversas com histórico real (~20–35 msgs, analisáveis) são com números **fora** da base de leads. Conclusão: lote SDR pontua conversas ricas (geralmente sem `lead_id`); leads do CRM caem em `sem_resposta_sdr`/`not_commercial`. Completar o histórico exigiria sync — proibido pela regra de segurança.
+- **Treino comercial = role-play SPIN (`@repo/commercial/roleplay`, régua `roleplay-spin-v1`)** — a closer conversa com um "lead" simulado por IA e treina perguntas SPIN. Motor puro (sem DB): `runRoleplayTurn` (turno de chat, `callGPT4oChat` texto multi-turno, temp 0.7) + `runRoleplayAnalysis` (**end-of-session, 1 chamada gpt-4o unificada**: notas 0–10 por critério + dossiê) + `scenarioFromTranscript` (rascunho persona/contexto/objeções p/ revisão humana). **5 critérios** (situação 10, problema 15, implicação 30, necessidade 30, condução&escuta 15 → soma 100): modelo devolve `nota_0_10` + texto, **nota global 0–100 calculada no código** (`computeRoleplayOverallScore`, ×10 clampado). NUNCA scoring ao vivo por turno. Dossiê (leitura 1 linha, 3 melhores momentos com trecho literal, 3 perguntas fracas + reescrita, 2 perguntas-modelo, próximo foco) gravado no jsonb `feedback`; notas em `score_breakdown`. **Persona/contexto/objeções vêm de `roleplay_scenarios` (dados), quem treina de `trainee_label` (dropdown derivado de `users.role='closer'`) — zero string de cliente no core.** UI em `(crm)/comercial/treino/` (lista+tendência, `[sessionId]` chat+dossiê com `maxDuration=300`, `cenarios` CRUD com `maxDuration=60`). Actions/queries em `server/actions/treino.ts` e `server/queries/treino.ts`. Mensagens persistidas em `roleplay_messages` (treino É gravado — diferente da decisão WhatsApp/SDR).
+- **Formulários self-hosted = substituem o Respondi.app (motor portado do `ba-hub`, sem package novo — vive em `apps/crm`).** 3 tabelas (`forms`/`form_fields`/`form_responses`). **Submit cria lead pelo MESMO pipeline do webhook Respondi**, via módulo compartilhado novo `server/lib/lead-intake/ingestLead` (dedup por email/whatsapp/respondent_id → `application_received` → insert/upsert → `lead_intake_log` source `formulario_web`). O webhook Respondi ficou **intocado** (fatiar, não quebrar). `ingestLead` ainda **fecha o gap `leadSourceSlug→leadSourceId`** que o webhook nunca resolveu. Tradução resposta→`ParsedLead` no deep module puro `server/lib/form-answer-mapper` (14 testes, reusa o type `ParsedLead`). **Mapeamento campo→lead é dado, não código**: cada campo tem `lead_mapping` (coluna do lead) e, para enums (`idadeFaixa`/`abordagemPreferida`/`tempoNoNichoFaixa`), `lead_enum_map` (opção→literal, **lookup EXATO no submit, sem heurística** — miss → campo null + `needsManualReview=true` reason `form_enum_unmatched:*`, cai em `/revisao`). Default de origem = slug `formulario` quando o form não mapeia. Runtime público `/f/[slug]` (Server Component, `force-dynamic`, **fora do `(crm)`**, `/f/` liberado em `PUBLIC_PATHS` no middleware; só `status='ativo'` renderiza, senão `notFound()`). Submit em `POST /api/forms/submit` (público — middleware isenta `/api/`; valida `ativo` + campos server-side reusando `validation.ts`). **Sem framer-motion** — transição CSS. Builder owner-only autosave (cada edição dispara a action; reorder via dnd-kit persiste `ordem`). UI em `(crm)/admin/formularios/` (lista, `[id]` editor, `[id]/respostas`). Actions/queries em `server/actions/forms.ts` e `server/queries/forms.ts`. Seed de exemplo: `pnpm --filter crm seed-form-example` (form `aplicacao-exemplo`).
 
 ---
 

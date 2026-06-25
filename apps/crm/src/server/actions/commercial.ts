@@ -29,6 +29,7 @@ type AnalyzeCloserInput = {
   transcript: string;
   durationMinutes?: number;
   leadId?: string;
+  closerId?: string;
 };
 
 export async function analyzeCloserAction(
@@ -46,6 +47,7 @@ export async function analyzeCloserAction(
     .values({
       analyzer: 'closer',
       leadId: input.leadId ?? null,
+      closerId: input.closerId ?? null,
       title: input.title.trim(),
       callDate: input.callDate,
       sourceType: 'fechamento',
