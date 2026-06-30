@@ -142,6 +142,7 @@ export async function POST(request: NextRequest) {
       utmTerm: lead.utmTerm,
       utmContent: lead.utmContent,
       stageId: stage.id,
+      applicationReceivedAt: lead.receivedAt,
       createdAt: lead.receivedAt,
       updatedAt: lead.receivedAt,
     })
