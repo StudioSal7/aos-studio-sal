@@ -49,6 +49,9 @@ export type KanbanLead = {
   idadeFaixa: string | null;
   abordagemPreferida: string | null;
   tempoNoNichoFaixa: string | null;
+  rendaFaixa: string | null;
+  orcamentoFaixa: string | null;
+  profissao: string | null;
   createdAt: string;
   updatedAt: string;
   hasUnconfirmedMeeting: boolean;
