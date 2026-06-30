@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { computeFirstContactSignal, PRE_CONTACT_STAGE_SLUGS } from './index';
+import {
+  computeFirstContactSignal,
+  PRE_CONTACT_STAGE_SLUGS,
+  reachesFirstContact,
+  CONTACT_PATH_STAGE_SLUGS,
+} from './index';
 
 const NOW = new Date('2026-06-30T12:00:00Z');
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
@@ -71,5 +76,34 @@ describe('computeFirstContactSignal', () => {
       'under_review',
       'qualified',
     ]);
+  });
+});
+
+describe('reachesFirstContact', () => {
+  it('true ao entrar em first_contact_sent', () => {
+    expect(reachesFirstContact('first_contact_sent')).toBe(true);
+  });
+
+  it('true ao pular direto para meeting_scheduled', () => {
+    expect(reachesFirstContact('meeting_scheduled')).toBe(true);
+  });
+
+  it('true para paid (won — houve contato)', () => {
+    expect(reachesFirstContact('paid')).toBe(true);
+  });
+
+  it('false para estágios pré-contato', () => {
+    expect(reachesFirstContact('application_received')).toBe(false);
+    expect(reachesFirstContact('under_review')).toBe(false);
+    expect(reachesFirstContact('qualified')).toBe(false);
+  });
+
+  it('false para lost (saída sem contato)', () => {
+    expect(reachesFirstContact('lost')).toBe(false);
+  });
+
+  it('CONTACT_PATH_STAGE_SLUGS não intersecta PRE_CONTACT_STAGE_SLUGS', () => {
+    const pre = new Set<string>(PRE_CONTACT_STAGE_SLUGS);
+    expect(CONTACT_PATH_STAGE_SLUGS.some((s) => pre.has(s))).toBe(false);
   });
 });

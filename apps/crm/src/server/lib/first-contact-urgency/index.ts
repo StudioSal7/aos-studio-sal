@@ -39,3 +39,27 @@ export function computeFirstContactSignal(params: {
 
   return { urgency, ageDays };
 }
+
+/**
+ * Estágios no caminho de contato — entrar em qualquer um marca o primeiro
+ * contato. Exclui os pré-contato (posições 1–3) e `lost` (posição 11, saída
+ * sem contato, ex: qualificação reprovada / fake-spam).
+ */
+export const CONTACT_PATH_STAGE_SLUGS = [
+  'first_contact_sent',
+  'meeting_scheduled',
+  'meeting_done',
+  'proposal_sent',
+  'closed_verbally',
+  'contract_sent',
+  'paid',
+] as const;
+
+/**
+ * True quando mover para `toStageSlug` representa o primeiro contato (lead saiu
+ * do pré-contato para o caminho de contato). O chamador deve combinar com um
+ * guard `firstContactAt == null` para registrar somente o PRIMEIRO contato.
+ */
+export function reachesFirstContact(toStageSlug: string): boolean {
+  return (CONTACT_PATH_STAGE_SLUGS as readonly string[]).includes(toStageSlug);
+}
