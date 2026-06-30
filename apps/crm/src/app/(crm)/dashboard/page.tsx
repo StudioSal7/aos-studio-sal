@@ -11,7 +11,9 @@ import {
   getPontuacaoVsEngajamento,
   getConversaoPorFonte,
   getTotalLeadsBySource,
+  getTimeToFirstContact,
 } from '@/server/queries/dashboard';
+import { computeFirstContactMetric } from '@/server/lib/first-contact-metric';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { CHART_COLORS } from '@/components/charts/chart-theme';
@@ -74,6 +76,7 @@ export default async function DashboardPage() {
     pontuacaoBuckets,
     conversaoPorFonte,
     bySource,
+    ttfcRows,
   ] = await Promise.all([
     getPipelineCounts(),
     getAvgTimePerStage(),
@@ -85,7 +88,13 @@ export default async function DashboardPage() {
     getPontuacaoVsEngajamento(),
     getConversaoPorFonte(),
     getTotalLeadsBySource(),
+    getTimeToFirstContact(),
   ]);
+
+  const ttfcDurations = ttfcRows.map(
+    (r) => (r.firstContactAt!.getTime() - r.applicationReceivedAt!.getTime()) / 1000,
+  );
+  const ttfc = computeFirstContactMetric(ttfcDurations);
 
   const avgByStageId = new Map(avgTimes.map((a) => [a.toStageId, a.avgDurationSeconds]));
 
@@ -219,7 +228,7 @@ export default async function DashboardPage() {
 
       <div className="space-y-10 p-8">
         {/* KPI hero */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-6 gap-4">
           <KpiCard label="total de leads" value={totalLeads} />
           <KpiCard
             label="engajadas no funil"
@@ -242,6 +251,18 @@ export default async function DashboardPage() {
             label="taxa de conversão"
             value={conversionRate !== null ? `${conversionRate}%` : '—'}
             note={concluded > 0 ? `${wonLeads} de ${concluded} concluídos` : 'sem concluídos'}
+          />
+          <KpiCard
+            label="tempo até 1º contato"
+            value={ttfc.medianSeconds !== null ? formatDuration(ttfc.medianSeconds) : '—'}
+            note={
+              ttfc.count > 0
+                ? `mediana · ${ttfc.withinSlaPct}% em 24h · base ${ttfc.count}`
+                : 'sem dados ainda'
+            }
+            highlight={
+              ttfc.withinSlaPct !== null && ttfc.withinSlaPct < 50 ? 'warn' : undefined
+            }
           />
         </div>
 
