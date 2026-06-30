@@ -41,6 +41,26 @@ export function LeadCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
+          {lead.firstContactSignal && (
+            <span
+              className={cn(
+                'mb-1 inline-flex items-center gap-1 text-micro',
+                lead.firstContactSignal.urgency === 'overdue'
+                  ? 'bg-signal-hot px-1.5 py-0.5 text-paper'
+                  : 'text-leaf',
+              )}
+            >
+              <span
+                className={cn(
+                  'inline-block h-1.5 w-1.5 rounded-full',
+                  lead.firstContactSignal.urgency === 'overdue' ? 'bg-paper' : 'bg-leaf',
+                )}
+              />
+              {lead.firstContactSignal.urgency === 'overdue'
+                ? `atrasado${lead.firstContactSignal.ageDays > 0 ? ` · ${lead.firstContactSignal.ageDays}d` : ''}`
+                : 'novo'}
+            </span>
+          )}
           <p className="truncate text-body text-ink">
             {lead.nickname ? (
               <>
