@@ -30,12 +30,14 @@ export function computeFirstContactMetric(
   if (count === 0) return { count: 0, medianSeconds: null, withinSlaPct: null };
 
   const mid = Math.floor(count / 2);
-  const medianSeconds =
-    count % 2 === 0 ? (valid[mid - 1] + valid[mid]) / 2 : valid[mid];
+  const medianSeconds: number =
+    count % 2 === 0
+      ? ((valid[mid - 1] ?? 0) + (valid[mid] ?? 0)) / 2
+      : (valid[mid] ?? 0);
 
   const slaSeconds = slaHours * 3600;
   const withinSla = valid.filter((d) => d <= slaSeconds).length;
-  const withinSlaPct = Math.round((withinSla / count) * 100);
+  const withinSlaPct: number = Math.round((withinSla / count) * 100);
 
   return { count, medianSeconds, withinSlaPct };
 }
