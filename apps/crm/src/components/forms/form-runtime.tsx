@@ -4,9 +4,10 @@
 // slide transition (no framer-motion), keyboard-friendly. Submits to
 // /api/forms/submit. All 13 field types via FieldComponent (./fields).
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTypeform } from './use-typeform';
 import { FieldComponent, fieldUsesOkButton } from './fields';
+import { resolveFormVariables } from './personalization';
 import type { FormView } from './types';
 
 interface FormRuntimeProps {
@@ -48,6 +49,10 @@ export function FormRuntime({ form, utm }: FormRuntimeProps) {
 
   const { currentIndex, answers, state, direction, error, progress, setAnswer, next, prev, submit } =
     useTypeform(fields, onSubmit);
+
+  // Variáveis de personalização (`{nome}`…) — recomputadas conforme a pessoa
+  // responde, para que as telas seguintes já tragam o apelido.
+  const variables = useMemo(() => resolveFormVariables(fields, answers), [fields, answers]);
 
   const bgImage = form.config?.backgroundImage ?? null;
 
@@ -165,6 +170,7 @@ export function FormRuntime({ form, utm }: FormRuntimeProps) {
                 onChange={() => {}}
                 onSubmit={() => {}}
                 autoFocus={false}
+                variables={variables}
               />
             ) : (
               <ClosingSending />
@@ -176,6 +182,7 @@ export function FormRuntime({ form, utm }: FormRuntimeProps) {
               onChange={(val) => setAnswer(currentField.id, val)}
               onSubmit={() => next()}
               autoFocus
+              variables={variables}
             />
           )}
         </div>

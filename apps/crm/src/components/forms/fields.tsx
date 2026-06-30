@@ -9,18 +9,21 @@
 import { useEffect, useRef } from 'react';
 import { Check } from 'lucide-react';
 import { formatPhone } from './validation';
+import { interpolate } from './personalization';
 import type { FieldProps } from './types';
 
 // Shared bits ---------------------------------------------------------------
 
-function Prompt({ field }: { field: FieldProps['field'] }) {
+function Prompt({ field, variables }: { field: FieldProps['field']; variables: FieldProps['variables'] }) {
   return (
     <>
       <h2 className="text-h3 text-ink">
-        {field.titulo}
+        {interpolate(field.titulo, variables)}
         {field.obrigatorio && <span className="ml-1 text-wood">*</span>}
       </h2>
-      {field.subtitulo && <p className="mt-2 text-body text-ink-muted">{field.subtitulo}</p>}
+      {field.subtitulo && (
+        <p className="mt-2 text-body text-ink-muted">{interpolate(field.subtitulo, variables)}</p>
+      )}
     </>
   );
 }
@@ -45,7 +48,7 @@ function optionBadge(active: boolean) {
 
 // Text-like -----------------------------------------------------------------
 
-function TextShortField({ field, value, onChange, onSubmit, autoFocus }: FieldProps) {
+function TextShortField({ field, value, onChange, onSubmit, autoFocus, variables }: FieldProps) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (autoFocus) ref.current?.focus();
@@ -54,7 +57,7 @@ function TextShortField({ field, value, onChange, onSubmit, autoFocus }: FieldPr
   const isNum = field.tipo === 'numero';
   return (
     <div className="w-full">
-      <Prompt field={field} />
+      <Prompt field={field} variables={variables} />
       <input
         ref={ref}
         type={field.tipo === 'email' ? 'email' : 'text'}
@@ -74,14 +77,14 @@ function TextShortField({ field, value, onChange, onSubmit, autoFocus }: FieldPr
   );
 }
 
-function TextLongField({ field, value, onChange, onSubmit, autoFocus }: FieldProps) {
+function TextLongField({ field, value, onChange, onSubmit, autoFocus, variables }: FieldProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (autoFocus) ref.current?.focus();
   }, [autoFocus]);
   return (
     <div className="w-full">
-      <Prompt field={field} />
+      <Prompt field={field} variables={variables} />
       <textarea
         ref={ref}
         value={value == null ? '' : String(value)}
@@ -100,10 +103,10 @@ function TextLongField({ field, value, onChange, onSubmit, autoFocus }: FieldPro
   );
 }
 
-function DateField({ field, value, onChange, onSubmit, autoFocus }: FieldProps) {
+function DateField({ field, value, onChange, onSubmit, autoFocus, variables }: FieldProps) {
   return (
     <div className="w-full">
-      <Prompt field={field} />
+      <Prompt field={field} variables={variables} />
       <input
         type="date"
         value={(value as string) ?? ''}
@@ -120,7 +123,7 @@ function DateField({ field, value, onChange, onSubmit, autoFocus }: FieldProps) 
 
 // Choice --------------------------------------------------------------------
 
-function SelectField({ field, value, onChange, onSubmit }: FieldProps) {
+function SelectField({ field, value, onChange, onSubmit, variables }: FieldProps) {
   const options = field.config?.opcoes ?? [];
   const selected = value as string | undefined;
 
@@ -139,7 +142,7 @@ function SelectField({ field, value, onChange, onSubmit }: FieldProps) {
 
   return (
     <div className="w-full">
-      <Prompt field={field} />
+      <Prompt field={field} variables={variables} />
       <div className="mt-6 flex flex-col gap-3">
         {options.map((opt, i) => {
           const active = selected === opt;
@@ -164,7 +167,7 @@ function SelectField({ field, value, onChange, onSubmit }: FieldProps) {
   );
 }
 
-function MultiSelectField({ field, value, onChange }: FieldProps) {
+function MultiSelectField({ field, value, onChange, variables }: FieldProps) {
   const options = field.config?.opcoes ?? [];
   const selected = (value as string[]) ?? [];
   const toggle = (opt: string) =>
@@ -172,7 +175,7 @@ function MultiSelectField({ field, value, onChange }: FieldProps) {
 
   return (
     <div className="w-full">
-      <Prompt field={field} />
+      <Prompt field={field} variables={variables} />
       <p className="mt-2 text-xs text-ink-muted">Selecione uma ou mais opções</p>
       <div className="mt-5 flex flex-col gap-3">
         {options.map((opt, i) => {
@@ -196,7 +199,7 @@ function MultiSelectField({ field, value, onChange }: FieldProps) {
   );
 }
 
-function ScaleField({ field, value, onChange, onSubmit }: FieldProps) {
+function ScaleField({ field, value, onChange, onSubmit, variables }: FieldProps) {
   const min = field.config?.min ?? 1;
   const max = field.config?.max ?? 10;
   const labelMin = field.config?.labelMin ?? '';
@@ -206,7 +209,7 @@ function ScaleField({ field, value, onChange, onSubmit }: FieldProps) {
 
   return (
     <div className="w-full">
-      <Prompt field={field} />
+      <Prompt field={field} variables={variables} />
       <div className="mt-8 flex flex-wrap gap-2">
         {numbers.map((n) => {
           const active = selected === n;
@@ -237,7 +240,7 @@ function ScaleField({ field, value, onChange, onSubmit }: FieldProps) {
   );
 }
 
-function YesNoField({ field, value, onChange, onSubmit }: FieldProps) {
+function YesNoField({ field, value, onChange, onSubmit, variables }: FieldProps) {
   const selected = value as boolean | undefined;
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -256,7 +259,7 @@ function YesNoField({ field, value, onChange, onSubmit }: FieldProps) {
 
   return (
     <div className="w-full">
-      <Prompt field={field} />
+      <Prompt field={field} variables={variables} />
       <div className="mt-8 flex gap-4">
         {[
           { label: 'Sim', val: true, key: 'S' },
@@ -287,12 +290,12 @@ function YesNoField({ field, value, onChange, onSubmit }: FieldProps) {
 
 // Screens -------------------------------------------------------------------
 
-function WelcomeField({ field, onSubmit }: FieldProps) {
+function WelcomeField({ field, onSubmit, variables }: FieldProps) {
   const buttonText = field.config?.botaoTexto ?? 'começar';
   return (
     <div className="flex flex-col items-start text-left">
-      <h1 className="text-form-title text-ink">{field.titulo}</h1>
-      {field.subtitulo && <p className="mt-4 max-w-lg text-body text-ink-muted whitespace-pre-line">{renderInline(field.subtitulo)}</p>}
+      <h1 className="text-form-title text-ink">{interpolate(field.titulo, variables)}</h1>
+      {field.subtitulo && <p className="mt-4 max-w-lg text-body text-ink-muted whitespace-pre-line">{renderInline(interpolate(field.subtitulo, variables))}</p>}
       <button
         type="button"
         onClick={onSubmit}
@@ -304,14 +307,14 @@ function WelcomeField({ field, onSubmit }: FieldProps) {
   );
 }
 
-function ClosingField({ field }: FieldProps) {
+function ClosingField({ field, variables }: FieldProps) {
   return (
     <div className="flex flex-col items-start">
       <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-leaf/15">
         <Check className="h-7 w-7 text-leaf" />
       </div>
-      <h1 className="text-form-title text-ink">{field.titulo}</h1>
-      {field.subtitulo && <p className="mt-4 max-w-lg text-body text-ink-muted whitespace-pre-line">{renderInline(field.subtitulo)}</p>}
+      <h1 className="text-form-title text-ink">{interpolate(field.titulo, variables)}</h1>
+      {field.subtitulo && <p className="mt-4 max-w-lg text-body text-ink-muted whitespace-pre-line">{renderInline(interpolate(field.subtitulo, variables))}</p>}
     </div>
   );
 }

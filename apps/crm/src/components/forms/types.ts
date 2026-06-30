@@ -80,4 +80,6 @@ export interface FieldProps {
   onChange: (value: unknown) => void;
   onSubmit: () => void;
   autoFocus: boolean;
+  /** Variáveis de personalização (`{nome}`…) injetadas no título/subtítulo. */
+  variables: Record<string, string>;
 }

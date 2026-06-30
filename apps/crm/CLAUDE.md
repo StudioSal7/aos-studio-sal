@@ -97,9 +97,11 @@ Para obter os IDs reais:
 | Arquivo | Descrição |
 |---|---|
 | `components/forms/form-runtime.tsx` | Runtime público (Typeform-style). Suporta `config.backgroundImage`: aplica `background-image` inline + overlay `bg-black/45` + classe `.form-on-photo` que sobrescreve tokens CSS para versão branca/transparente. **Auto-submit ao chegar na tela `encerramento`** (`useEffect` guardado por `useRef`) — a tela "recebemos sua aplicação" não tem botão de envio, então o POST dispara sozinho; `ClosingSending`/`ClosingError` dão feedback honesto (enviando → sucesso → retry em falha) |
-| `components/forms/fields.tsx` | 13 tipos de campo. `WelcomeField` usa `bg-wood` nos botões (não `bg-ink`) + `whitespace-pre-line` no subtítulo para `\n` literais |
+| `components/forms/fields.tsx` | 13 tipos de campo. `WelcomeField` usa `bg-wood` nos botões (não `bg-ink`) + `whitespace-pre-line` no subtítulo para `\n` literais. Título/subtítulo passam por `interpolate` (personalização `{nome}`) |
+| `components/forms/personalization.ts` | **Módulo puro** (15 testes) — token `{nome}` nas perguntas (estilo Respondi). `resolveFormVariables` resolve pelo campo `leadMapping==='nickname'` (fallback `name`); `interpolate` troca `{chave}` e higieniza a frase quando o valor está vazio. Threadeado via `variables` em `FieldProps` (computado 1x no `form-runtime.tsx`). Builder mostra dica `{nome}` no editor expandido |
 | `app/globals.css` | Classe `.form-on-photo` — override de todos os tokens semânticos (`--color-ink`, `--color-paper`, `--color-line`, etc.) para fundos escuros. Tailwind herda automaticamente via CSS custom property cascade |
-| `scripts/seed-aplicacao-sal.ts` | Cria form `aplicacao-sal` (17 telas, réplica do Respondi, fundo `/sal-fundo.jpg`). Idempotente. `pnpm --filter crm seed-aplicacao-sal` |
+| `scripts/seed-aplicacao-sal.ts` | Cria form `aplicacao-sal` (17 telas, réplica do Respondi, fundo `/sal-fundo.jpg`). Idempotente — **pula se já existir**. `pnpm --filter crm seed-aplicacao-sal` |
+| `scripts/update-aplicacao-sal-copy.ts` | Patch NÃO-destrutivo da copy do `aplicacao-sal` JÁ em produção (o seed pula forms existentes). UPDATE por `ordem`: subtítulo da tela 1 + títulos com `{nome}` nas telas 6,7,9,12,16. Idempotente. `pnpm --filter crm update-aplicacao-sal-copy` |
 | `public/sal-fundo.jpg` | Foto botânica escura (folhas tropicais) — fundo do form `aplicacao-sal` |
 
 ---

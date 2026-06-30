@@ -381,6 +381,14 @@ function FieldCard({
       {/* Expanded editor */}
       {expanded && (
         <div className="space-y-4 border-t border-line px-4 py-4">
+          <p className="text-xs text-ink-muted">
+            Dica: escreva{' '}
+            <code className="border border-line bg-canvas px-1 py-0.5 text-[11px] normal-case">
+              {'{nome}'}
+            </code>{' '}
+            no título ou subtítulo para inserir o apelido que a pessoa deu em “como você gostaria
+            de ser chamada”.
+          </p>
           <div>
             <label className="mb-1 block text-micro text-ink-muted">Subtítulo (opcional)</label>
             <Textarea

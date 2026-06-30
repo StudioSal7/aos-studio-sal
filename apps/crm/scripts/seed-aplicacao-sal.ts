@@ -141,7 +141,7 @@ async function main() {
       formId: form.id,
       ordem: 6,
       tipo: 'select',
-      titulo: 'Qual a sua idade',
+      titulo: '{nome}, qual a sua idade?',
       obrigatorio: true,
       leadMapping: 'idadeFaixa',
       config: {
@@ -169,7 +169,7 @@ async function main() {
       formId: form.id,
       ordem: 7,
       tipo: 'select',
-      titulo: 'Como você nos conheceu?',
+      titulo: 'E {nome}, como você nos conheceu?',
       obrigatorio: true,
       leadMapping: 'leadSourceSlug',
       config: {
@@ -205,7 +205,7 @@ async function main() {
       formId: form.id,
       ordem: 9,
       tipo: 'texto_longo',
-      titulo: 'Nos conte um pouco sobre seu trabalho e o momento atual da sua jornada',
+      titulo: '{nome}, nos conte um pouco sobre seu trabalho e o momento atual da sua jornada',
       subtitulo:
         '_caso trabalhe no corporativo, por favor indique empresa e cargo.\n_caso trabalhe como autônoma ou empresária, por favor indique nicho e momento do negócio:',
       placeholder: 'Sua resposta...',
@@ -256,7 +256,7 @@ async function main() {
       formId: form.id,
       ordem: 12,
       tipo: 'boas_vindas',
-      titulo: 'sabemos que o investimento é uma parte importante da sua decisão',
+      titulo: '{nome}, sabemos que o investimento é uma parte importante da sua decisão',
       subtitulo:
         'e que, muitas vezes, ele depende não só do valor em si, mas do quanto a proposta faz sentido pra você. Por isso, as perguntas a seguir não são eliminatórias. Elas só nos ajudam a te direcionar melhor, com respeito ao seu momento atual e ao nosso tempo.',
       obrigatorio: false,
@@ -331,7 +331,7 @@ async function main() {
       formId: form.id,
       ordem: 16,
       tipo: 'encerramento',
-      titulo: 'Recebemos sua aplicação!',
+      titulo: 'Recebemos sua aplicação, {nome}!',
       subtitulo:
         'Agradecemos seu interesse em ser traduzida pela Sal. Logo entraremos em contato pelo WhatsApp e email — fique atenta à caixa de spam.',
       obrigatorio: false,
