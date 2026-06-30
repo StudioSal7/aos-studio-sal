@@ -29,6 +29,7 @@ export async function getKanbanLeads() {
       abordagemPreferida: schema.leads.abordagemPreferida,
       tempoNoNichoFaixa: schema.leads.tempoNoNichoFaixa,
       createdAt: schema.leads.createdAt,
+      applicationReceivedAt: schema.leads.applicationReceivedAt,
       updatedAt: schema.leads.updatedAt,
       hasUnconfirmedMeeting: sql<boolean>`EXISTS (
         SELECT 1 FROM ${schema.meetings}
