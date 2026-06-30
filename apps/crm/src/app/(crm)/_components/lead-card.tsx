@@ -58,7 +58,7 @@ export function LeadCard({
               />
               {lead.firstContactSignal.urgency === 'overdue'
                 ? `atrasado${lead.firstContactSignal.ageDays > 0 ? ` · ${lead.firstContactSignal.ageDays}d` : ''}`
-                : 'novo'}
+                : 'atender agora'}
             </span>
           )}
           <p className="truncate text-body text-ink">
