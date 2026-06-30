@@ -20,7 +20,8 @@
     "seed-form-example": "tsx --env-file=.env.local scripts/seed-form-example.ts",
     "seed-aplicacao-sal": "tsx --env-file=.env.local scripts/seed-aplicacao-sal.ts",
     "update-aplicacao-sal-copy": "tsx --env-file=.env.local scripts/update-aplicacao-sal-copy.ts",
-    "fix-shifted-lead": "tsx --env-file=.env.local scripts/fix-shifted-lead.ts"
+    "fix-shifted-lead": "tsx --env-file=.env.local scripts/fix-shifted-lead.ts",
+    "backfill-application-received-at": "tsx --env-file=.env.local scripts/backfill-application-received-at.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
