@@ -51,7 +51,8 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `server/lib/whatsapp-normalizer/` | Puro | 24 passando |
 | `server/lib/respondi-payload-mapper/` | Puro | 29 passando |
 | `server/lib/form-answer-mapper/` | Puro | 14 passando |
-| `server/lib/first-contact-urgency/` | Puro | 7 passando |
+| `server/lib/first-contact-urgency/` | Puro | 13 passando |
+| `server/lib/first-contact-metric/` | Puro | 7 passando |
 | `server/lib/lead-intake/` | Usa DB | Sem testes (compartilhado: form submit; webhook Respondi segue inline) |
 | `server/lib/stage-transition-validator/` | Puro | 8 passando |
 | `server/lib/legacy-csv-parser/` | Puro + fixtures | 32 passando |
