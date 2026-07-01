@@ -1,0 +1,1 @@
+ALTER TABLE "leads" ADD COLUMN "application_received_at" timestamp with time zone;

@@ -1,4 +1,4 @@
-import { avg, count, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, avg, count, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 
@@ -215,4 +215,25 @@ export async function getTotalLeadsBySource() {
     .where(isNull(schema.leads.deletedAt))
     .groupBy(schema.leads.leadSourceId, schema.leadSources.displayName)
     .orderBy(desc(count(schema.leads.id)));
+}
+
+/**
+ * Pares (aplicação, primeiro contato) dos leads que já tiveram primeiro
+ * contato e têm timestamp de aplicação. Base da métrica "tempo até 1º contato".
+ * Legados sem application_received_at ficam de fora (sem início confiável).
+ */
+export async function getTimeToFirstContact() {
+  return db
+    .select({
+      applicationReceivedAt: schema.leads.applicationReceivedAt,
+      firstContactAt: schema.leads.firstContactAt,
+    })
+    .from(schema.leads)
+    .where(
+      and(
+        isNull(schema.leads.deletedAt),
+        isNotNull(schema.leads.applicationReceivedAt),
+        isNotNull(schema.leads.firstContactAt),
+      ),
+    );
 }

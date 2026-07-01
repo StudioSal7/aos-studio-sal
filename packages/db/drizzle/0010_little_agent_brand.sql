@@ -1,0 +1,1 @@
+ALTER TABLE "leads" ADD COLUMN "first_contact_at" timestamp with time zone;

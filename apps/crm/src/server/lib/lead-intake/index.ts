@@ -146,6 +146,7 @@ export async function ingestLead(
       stageId: stage.id,
       needsManualReview: ctx.flagReview ? true : undefined,
       manualReviewReason: ctx.flagReview ?? undefined,
+      applicationReceivedAt: lead.receivedAt,
       createdAt: lead.receivedAt,
       updatedAt: lead.receivedAt,
     })

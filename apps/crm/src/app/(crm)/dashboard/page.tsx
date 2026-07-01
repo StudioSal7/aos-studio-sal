@@ -11,7 +11,9 @@ import {
   getPontuacaoVsEngajamento,
   getConversaoPorFonte,
   getTotalLeadsBySource,
+  getTimeToFirstContact,
 } from '@/server/queries/dashboard';
+import { computeFirstContactMetric } from '@/server/lib/first-contact-metric';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { CHART_COLORS } from '@/components/charts/chart-theme';
@@ -19,6 +21,11 @@ import { HorizontalBarChart } from '@/components/charts/horizontal-bar-chart';
 import { StackedBarChart } from '@/components/charts/stacked-bar-chart';
 import { DonutChart } from '@/components/charts/donut-chart';
 import { DualAxisChart } from '@/components/charts/dual-axis-chart';
+
+// Dashboard lê dados vivos por trás do auth — nunca deve ser pré-renderizado no
+// build. Sem isto, o Next tenta exportar /dashboard no build e executa as queries
+// sem o ambiente de runtime, quebrando o deploy.
+export const dynamic = 'force-dynamic';
 
 // Extrai o valor mínimo implícito de um label de renda/orçamento para ordenação crescente.
 function extractMinValue(label: string): number {
@@ -74,6 +81,7 @@ export default async function DashboardPage() {
     pontuacaoBuckets,
     conversaoPorFonte,
     bySource,
+    ttfcRows,
   ] = await Promise.all([
     getPipelineCounts(),
     getAvgTimePerStage(),
@@ -85,7 +93,22 @@ export default async function DashboardPage() {
     getPontuacaoVsEngajamento(),
     getConversaoPorFonte(),
     getTotalLeadsBySource(),
+    getTimeToFirstContact(),
   ]);
+
+  const ttfcDurations = ttfcRows
+    .map((r) => {
+      // A query já filtra ambos NOT NULL, mas guardamos aqui contra null/tipo
+      // inesperado (o driver pode devolver string p/ timestamptz) — new Date()
+      // aceita Date e string, sem depender de non-null assertion.
+      if (!r.firstContactAt || !r.applicationReceivedAt) return null;
+      const fc = new Date(r.firstContactAt).getTime();
+      const ar = new Date(r.applicationReceivedAt).getTime();
+      if (Number.isNaN(fc) || Number.isNaN(ar)) return null;
+      return (fc - ar) / 1000;
+    })
+    .filter((d): d is number => d !== null);
+  const ttfc = computeFirstContactMetric(ttfcDurations);
 
   const avgByStageId = new Map(avgTimes.map((a) => [a.toStageId, a.avgDurationSeconds]));
 
@@ -219,7 +242,7 @@ export default async function DashboardPage() {
 
       <div className="space-y-10 p-8">
         {/* KPI hero */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-6 gap-4">
           <KpiCard label="total de leads" value={totalLeads} />
           <KpiCard
             label="engajadas no funil"
@@ -242,6 +265,18 @@ export default async function DashboardPage() {
             label="taxa de conversão"
             value={conversionRate !== null ? `${conversionRate}%` : '—'}
             note={concluded > 0 ? `${wonLeads} de ${concluded} concluídos` : 'sem concluídos'}
+          />
+          <KpiCard
+            label="tempo até 1º contato"
+            value={ttfc.medianSeconds !== null ? formatDuration(ttfc.medianSeconds) : '—'}
+            note={
+              ttfc.count > 0
+                ? `mediana · ${ttfc.withinSlaPct}% em 24h · base ${ttfc.count}`
+                : 'sem dados ainda'
+            }
+            highlight={
+              ttfc.withinSlaPct !== null && ttfc.withinSlaPct < 50 ? 'warn' : undefined
+            }
           />
         </div>
 

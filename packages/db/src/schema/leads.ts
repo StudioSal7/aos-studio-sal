@@ -89,6 +89,8 @@ export const leads = pgTable(
 
     // Timestamps
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    applicationReceivedAt: timestamp('application_received_at', { withTimezone: true }),
+    firstContactAt: timestamp('first_contact_at', { withTimezone: true }),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },

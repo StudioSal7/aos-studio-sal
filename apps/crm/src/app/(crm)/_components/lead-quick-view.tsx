@@ -14,6 +14,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { ScheduleMeetingForm } from '@/app/(crm)/leads/[id]/_components/schedule-meeting-form';
+import { labelForLeadEnum } from '@/components/forms/lead-mapping-options';
 import type { KanbanLead, KanbanStage } from './kanban-board';
 
 export function LeadQuickView({
@@ -61,6 +62,38 @@ export function LeadQuickView({
                   <DataRow label="e-mail" value={lead.email} />
                   <DataRow label="whatsapp" value={lead.whatsappE164} />
                 </Section>
+
+                {(lead.abordagemPreferida ||
+                  lead.idadeFaixa ||
+                  lead.tempoNoNichoFaixa ||
+                  lead.rendaFaixa ||
+                  lead.orcamentoFaixa ||
+                  lead.profissao) && (
+                  <Section title="como abordar">
+                    <DataRow
+                      label="abordagem"
+                      value={labelForLeadEnum('abordagemPreferida', lead.abordagemPreferida)}
+                    />
+                    <DataRow
+                      label="faixa etária"
+                      value={labelForLeadEnum('idadeFaixa', lead.idadeFaixa)}
+                    />
+                    <DataRow
+                      label="tempo no nicho"
+                      value={labelForLeadEnum('tempoNoNichoFaixa', lead.tempoNoNichoFaixa)}
+                    />
+                    <DataRow label="renda" value={lead.rendaFaixa} />
+                    <DataRow label="orçamento" value={lead.orcamentoFaixa} />
+                    {lead.profissao && (
+                      <div className="grid grid-cols-[120px_1fr] gap-3 py-1 text-body">
+                        <span className="text-ink-muted normal-case tracking-normal">
+                          profissão
+                        </span>
+                        <span className="line-clamp-4 text-ink">{lead.profissao}</span>
+                      </div>
+                    )}
+                  </Section>
+                )}
 
                 {lead.nextActionAt && (
                   <Section title="próxima ação">

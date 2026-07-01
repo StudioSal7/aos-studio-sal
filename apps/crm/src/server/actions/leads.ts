@@ -6,6 +6,7 @@ import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import { requireAuth } from '@/server/auth';
 import { validateStageTransition } from '@/server/lib/stage-transition-validator/index';
+import { reachesFirstContact } from '@/server/lib/first-contact-urgency';
 import { writeFieldAudit, writeStageHistory } from '@/server/audit-writer';
 
 // ---- Stage transition ----
@@ -32,6 +33,7 @@ export async function updateLeadStageAction(
       id: schema.leads.id,
       stageId: schema.leads.stageId,
       updatedAt: schema.leads.updatedAt,
+      firstContactAt: schema.leads.firstContactAt,
     })
     .from(schema.leads)
     .where(and(eq(schema.leads.id, input.leadId), isNull(schema.leads.deletedAt)))
@@ -70,6 +72,10 @@ export async function updateLeadStageAction(
         motivoPerdaId: input.motivoPerdaId ?? undefined,
         valorProposto: input.valorProposto ?? undefined,
         formaPagamentoNegociada: input.formaPagamentoNegociada ?? undefined,
+        firstContactAt:
+          lead.firstContactAt == null && reachesFirstContact(targetStage.slug)
+            ? now
+            : undefined,
         updatedAt: now,
       })
       .where(eq(schema.leads.id, input.leadId));

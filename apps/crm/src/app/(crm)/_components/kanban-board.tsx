@@ -17,6 +17,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { ActionFeedback, useActionFeedback } from '@/components/ui/action-feedback';
+import type { FirstContactSignal } from '@/server/lib/first-contact-urgency';
 import { KanbanColumn } from './kanban-column';
 import { LeadCard } from './lead-card';
 import { LeadQuickView } from './lead-quick-view';
@@ -48,9 +49,13 @@ export type KanbanLead = {
   idadeFaixa: string | null;
   abordagemPreferida: string | null;
   tempoNoNichoFaixa: string | null;
+  rendaFaixa: string | null;
+  orcamentoFaixa: string | null;
+  profissao: string | null;
   createdAt: string;
   updatedAt: string;
   hasUnconfirmedMeeting: boolean;
+  firstContactSignal: FirstContactSignal;
 };
 
 type PendingTransition = {
