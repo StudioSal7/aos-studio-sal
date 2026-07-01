@@ -22,6 +22,11 @@ import { StackedBarChart } from '@/components/charts/stacked-bar-chart';
 import { DonutChart } from '@/components/charts/donut-chart';
 import { DualAxisChart } from '@/components/charts/dual-axis-chart';
 
+// Dashboard lê dados vivos por trás do auth — nunca deve ser pré-renderizado no
+// build. Sem isto, o Next tenta exportar /dashboard no build e executa as queries
+// sem o ambiente de runtime, quebrando o deploy.
+export const dynamic = 'force-dynamic';
+
 // Extrai o valor mínimo implícito de um label de renda/orçamento para ordenação crescente.
 function extractMinValue(label: string): number {
   const lower = label.toLowerCase();
@@ -91,9 +96,18 @@ export default async function DashboardPage() {
     getTimeToFirstContact(),
   ]);
 
-  const ttfcDurations = ttfcRows.map(
-    (r) => (r.firstContactAt!.getTime() - r.applicationReceivedAt!.getTime()) / 1000,
-  );
+  const ttfcDurations = ttfcRows
+    .map((r) => {
+      // A query já filtra ambos NOT NULL, mas guardamos aqui contra null/tipo
+      // inesperado (o driver pode devolver string p/ timestamptz) — new Date()
+      // aceita Date e string, sem depender de non-null assertion.
+      if (!r.firstContactAt || !r.applicationReceivedAt) return null;
+      const fc = new Date(r.firstContactAt).getTime();
+      const ar = new Date(r.applicationReceivedAt).getTime();
+      if (Number.isNaN(fc) || Number.isNaN(ar)) return null;
+      return (fc - ar) / 1000;
+    })
+    .filter((d): d is number => d !== null);
   const ttfc = computeFirstContactMetric(ttfcDurations);
 
   const avgByStageId = new Map(avgTimes.map((a) => [a.toStageId, a.avgDurationSeconds]));
