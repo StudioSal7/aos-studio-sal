@@ -10,7 +10,12 @@ const gowun = Gowun_Batang({
   variable: '--font-gowun',
 });
 
+// metadataBase resolve URLs relativas de OG (ex.: a imagem de fundo do form,
+// /sal-fundo.jpg) para absolutas — o WhatsApp e demais readers exigem absoluta.
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
   title: 'a revolução.',
   description: 'CRM Fase 1',
 };
