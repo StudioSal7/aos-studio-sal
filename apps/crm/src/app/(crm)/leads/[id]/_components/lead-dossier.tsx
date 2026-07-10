@@ -51,6 +51,18 @@ export function LeadDossier({
         </Section>
       </div>
 
+      <Section title="primeiro contato">
+        <DataRow
+          label="aplicação recebida em"
+          value={formatDateTimeBR(lead.applicationReceivedAt)}
+        />
+        <DataRow label="primeiro contato em" value={formatDateTimeBR(lead.firstContactAt)} />
+        <FirstContactElapsed
+          receivedAt={lead.applicationReceivedAt}
+          firstContactAt={lead.firstContactAt}
+        />
+      </Section>
+
       <Section title="origem">
         <DataRow label="utm source" value={lead.utmSource} />
         <DataRow label="utm medium" value={lead.utmMedium} />
@@ -64,6 +76,66 @@ export function LeadDossier({
 
       <FormResponsesSection responses={formResponses} />
     </div>
+  );
+}
+
+// ── Primeiro contato (tempo + SLA) ───────────────────────────────────────────
+// SLA de 24h entre a aplicação chegar (application_received_at) e o 1º contato
+// (first_contact_at). Leads legados sem application_received_at não têm início
+// confiável → o tempo fica "—".
+const SLA_HOURS = 24;
+
+function formatDateTimeBR(d: Date | null): string | null {
+  if (!d) return null;
+  return d.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatElapsed(seconds: number): string {
+  const totalMin = Math.floor(seconds / 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}min`;
+  return `${h}h${String(m).padStart(2, '0')}m`;
+}
+
+function FirstContactElapsed({
+  receivedAt,
+  firstContactAt,
+}: {
+  receivedAt: Date | null;
+  firstContactAt: Date | null;
+}) {
+  let content: React.ReactNode;
+
+  if (receivedAt && firstContactAt) {
+    const seconds = (firstContactAt.getTime() - receivedAt.getTime()) / 1000;
+    const withinSla = seconds <= SLA_HOURS * 3600;
+    content = (
+      <>
+        {formatElapsed(seconds)}{' '}
+        <span className={withinSla ? 'text-leaf' : 'text-clay'}>
+          · {withinSla ? `dentro do SLA (${SLA_HOURS}h)` : `fora do SLA (${SLA_HOURS}h)`}
+        </span>
+      </>
+    );
+  } else if (receivedAt) {
+    content = <span className="text-ink-muted">ainda não realizado</span>;
+  } else {
+    content = <span className="text-ink-muted">—</span>;
+  }
+
+  return (
+    <>
+      <dt className="text-ink-muted">tempo até 1º contato</dt>
+      <dd className="text-ink">{content}</dd>
+    </>
   );
 }
 
