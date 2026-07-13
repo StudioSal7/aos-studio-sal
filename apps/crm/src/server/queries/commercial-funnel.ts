@@ -153,17 +153,23 @@ export async function getCommercialFunnelCounts(range: DateRange): Promise<Comme
 // Evolução semanal: as N semanas de calendário mais recentes (segunda→domingo,
 // America/Sao_Paulo), a corrente inclusa (parcial). Reusa a mesma lógica de
 // contagem por semana. Independe do filtro de período do funil.
+//
+// Semanas em SEQUÊNCIA, não em paralelo: cada getCommercialFunnelCounts já
+// dispara ~8 queries concorrentes; 4 semanas em paralelo somariam ~32 queries
+// simultâneas contra o pool de 10 conexões do client (@repo/db/client,
+// `max: 10`), empilhadas em cima do resto das queries do dashboard —
+// exauriu o pool em produção ("Uncaught Error: Connection closed" no
+// console). Sequencial mantém o pico de concorrência igual ao de uma única
+// chamada de funil; a latência extra é aceitável num dashboard interno.
 export async function getWeeklyFunnel(
   weeks = 4,
   now: Date = new Date(),
 ): Promise<WeeklyFunnelRow[]> {
   const ranges: WeekRange[] = lastNWeeks(weeks, now);
-  const rows = await Promise.all(
-    ranges.map(async (week) => ({
-      label: week.label,
-      isCurrent: week.isCurrent,
-      counts: await getCommercialFunnelCounts({ from: week.from, to: week.to }),
-    })),
-  );
+  const rows: WeeklyFunnelRow[] = [];
+  for (const week of ranges) {
+    const counts = await getCommercialFunnelCounts({ from: week.from, to: week.to });
+    rows.push({ label: week.label, isCurrent: week.isCurrent, counts });
+  }
   return rows;
 }
