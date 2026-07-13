@@ -14,7 +14,7 @@ import {
   getTimeToFirstContact,
 } from '@/server/queries/dashboard';
 import { computeFirstContactMetric } from '@/server/lib/first-contact-metric';
-import { getCommercialFunnelCounts } from '@/server/queries/commercial-funnel';
+import { getCommercialFunnelCounts, getWeeklyFunnel } from '@/server/queries/commercial-funnel';
 import {
   DEFAULT_DATE_RANGE,
   isDateRangeOption,
@@ -28,6 +28,7 @@ import { StackedBarChart } from '@/components/charts/stacked-bar-chart';
 import { DonutChart } from '@/components/charts/donut-chart';
 import { DualAxisChart } from '@/components/charts/dual-axis-chart';
 import { CommercialFunnelSection } from './_components/commercial-funnel-section';
+import { WeeklyFunnelSection } from './_components/weekly-funnel-section';
 
 // Dashboard lê dados vivos por trás do auth — nunca deve ser pré-renderizado no
 // build. Sem isto, o Next tenta exportar /dashboard no build e executa as queries
@@ -116,6 +117,7 @@ export default async function DashboardPage({
     ttfcRows,
     funnelCounts,
     ttfcRangeRows,
+    weeklyFunnel,
   ] = await Promise.all([
     getPipelineCounts(),
     getAvgTimePerStage(),
@@ -130,6 +132,7 @@ export default async function DashboardPage({
     getTimeToFirstContact(),
     getCommercialFunnelCounts(range),
     getTimeToFirstContact(range),
+    getWeeklyFunnel(),
   ]);
 
   const ttfc = computeFirstContactMetric(ttfcDurationsFromRows(ttfcRows));
@@ -307,6 +310,9 @@ export default async function DashboardPage({
 
         {/* Funil de vendas — logo abaixo do KPI hero (bloco de maior destaque) */}
         <CommercialFunnelSection counts={funnelCounts} range={rangeOption} ttfc={ttfcRange} />
+
+        {/* Evolução semanal — tendência + conversão, sempre 4 semanas (fixo) */}
+        <WeeklyFunnelSection weeks={weeklyFunnel} />
 
         {/* Funil completo */}
         <Section

@@ -2,19 +2,34 @@
 // CRM já coleta hoje. Posts feitos e visualizações geradas NÃO têm fonte de
 // dados (dependem de Meta Ads/GA4 — fase posterior) e não entram aqui; a UI
 // as trata com a tag "em manutenção".
+//
+// Reunião agendada/comparecida vêm de lead_stage_history (movimento do card no
+// kanban para os estágios meeting_scheduled/meeting_done) — mesma fonte de
+// proposta/venda. Não usamos a tabela `meetings` aqui: o time trabalha no
+// kanban e arrastar o card É o evento; a tabela `meetings` só é populada pelo
+// formulário na tela do lead, que a operação nem sempre usa.
 
-import { and, count, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, count, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import type { DateRange } from '@/server/lib/date-range/index';
+import { lastNWeeks, type WeekRange } from '@/server/lib/week-range/index';
 
 export interface CommercialFunnelCounts {
   leadsEntered: number;
   formResponses: number;
+  qualifiedReached: number;
+  firstContactReached: number;
   meetingsScheduled: number;
   meetingsAttended: number;
   proposalsSent: number;
   salesWon: number;
+}
+
+export interface WeeklyFunnelRow {
+  label: string;
+  isCurrent: boolean;
+  counts: CommercialFunnelCounts;
 }
 
 // Leads que entraram no período (application_received_at, com fallback pra
@@ -49,34 +64,16 @@ export async function getFormResponsesCount(range: DateRange): Promise<number> {
   return Number(row?.value ?? 0);
 }
 
-// Reuniões agendadas no período — meetings com status ativo (exclui
-// cancelada/não_realizada), filtradas pela data da reunião (scheduled_at).
+// Reuniões agendadas no período — leads movidos para o estágio
+// `meeting_scheduled` no kanban (transição em lead_stage_history).
 export async function getMeetingsScheduledCount(range: DateRange): Promise<number> {
-  const conditions: SQL[] = [
-    inArray(schema.meetings.status, ['agendada', 'realizada', 'reagendada']),
-  ];
-  if (range.from) conditions.push(sql`${schema.meetings.scheduledAt} >= ${range.from.toISOString()}::timestamptz`);
-  if (range.to) conditions.push(sql`${schema.meetings.scheduledAt} < ${range.to.toISOString()}::timestamptz`);
-
-  const [row] = await db
-    .select({ value: count() })
-    .from(schema.meetings)
-    .where(and(...conditions));
-  return Number(row?.value ?? 0);
+  return getLeadsReachedStageCount('meeting_scheduled', range);
 }
 
-// Reuniões comparecidas no período — quando a reunião de fato ACONTECEU
-// (meetings.scheduled_at) e foi marcada como realizada.
+// Reuniões comparecidas no período — leads movidos para o estágio
+// `meeting_done` no kanban (transição em lead_stage_history).
 export async function getMeetingsAttendedCount(range: DateRange): Promise<number> {
-  const conditions: SQL[] = [eq(schema.meetings.status, 'realizada')];
-  if (range.from) conditions.push(sql`${schema.meetings.scheduledAt} >= ${range.from.toISOString()}::timestamptz`);
-  if (range.to) conditions.push(sql`${schema.meetings.scheduledAt} < ${range.to.toISOString()}::timestamptz`);
-
-  const [row] = await db
-    .select({ value: count() })
-    .from(schema.meetings)
-    .where(and(...conditions));
-  return Number(row?.value ?? 0);
+  return getLeadsReachedStageCount('meeting_done', range);
 }
 
 // Leads que atingiram um estágio específico no período, contados pelas
@@ -104,6 +101,14 @@ async function getLeadsReachedStageCount(stageSlug: string, range: DateRange): P
   return Number(row?.value ?? 0);
 }
 
+export async function getQualifiedReachedCount(range: DateRange): Promise<number> {
+  return getLeadsReachedStageCount('qualified', range);
+}
+
+export async function getFirstContactReachedCount(range: DateRange): Promise<number> {
+  return getLeadsReachedStageCount('first_contact_sent', range);
+}
+
 export async function getProposalsSentCount(range: DateRange): Promise<number> {
   return getLeadsReachedStageCount('proposal_sent', range);
 }
@@ -113,15 +118,52 @@ export async function getSalesWonCount(range: DateRange): Promise<number> {
 }
 
 export async function getCommercialFunnelCounts(range: DateRange): Promise<CommercialFunnelCounts> {
-  const [leadsEntered, formResponses, meetingsScheduled, meetingsAttended, proposalsSent, salesWon] =
-    await Promise.all([
-      getLeadsEnteredCount(range),
-      getFormResponsesCount(range),
-      getMeetingsScheduledCount(range),
-      getMeetingsAttendedCount(range),
-      getProposalsSentCount(range),
-      getSalesWonCount(range),
-    ]);
+  const [
+    leadsEntered,
+    formResponses,
+    qualifiedReached,
+    firstContactReached,
+    meetingsScheduled,
+    meetingsAttended,
+    proposalsSent,
+    salesWon,
+  ] = await Promise.all([
+    getLeadsEnteredCount(range),
+    getFormResponsesCount(range),
+    getQualifiedReachedCount(range),
+    getFirstContactReachedCount(range),
+    getMeetingsScheduledCount(range),
+    getMeetingsAttendedCount(range),
+    getProposalsSentCount(range),
+    getSalesWonCount(range),
+  ]);
 
-  return { leadsEntered, formResponses, meetingsScheduled, meetingsAttended, proposalsSent, salesWon };
+  return {
+    leadsEntered,
+    formResponses,
+    qualifiedReached,
+    firstContactReached,
+    meetingsScheduled,
+    meetingsAttended,
+    proposalsSent,
+    salesWon,
+  };
+}
+
+// Evolução semanal: as N semanas de calendário mais recentes (segunda→domingo,
+// America/Sao_Paulo), a corrente inclusa (parcial). Reusa a mesma lógica de
+// contagem por semana. Independe do filtro de período do funil.
+export async function getWeeklyFunnel(
+  weeks = 4,
+  now: Date = new Date(),
+): Promise<WeeklyFunnelRow[]> {
+  const ranges: WeekRange[] = lastNWeeks(weeks, now);
+  const rows = await Promise.all(
+    ranges.map(async (week) => ({
+      label: week.label,
+      isCurrent: week.isCurrent,
+      counts: await getCommercialFunnelCounts({ from: week.from, to: week.to }),
+    })),
+  );
+  return rows;
 }

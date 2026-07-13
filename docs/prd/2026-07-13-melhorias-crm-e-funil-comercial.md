@@ -443,3 +443,41 @@ o Supabase — hoje elas vivem no store da Evolution e não estão no banco.
 3. **agente-auditor** confere PRD × diff/execução → APROVADO/REPROVADO.
 4. Só então: commit (autor Rodrigo) + push + **PR** para o André aprovar (sem
    merge automático).
+
+---
+
+## Adendo (2026-07-13, sobre esta mesma branch) — reunião computa pelo kanban + evolução semanal
+
+Pedido do Rodrigo depois do funil de período: (a) fazer o movimento do card no
+kanban para "reunião agendada"/"reunião realizada" **computar** no funil; (b)
+ver **tendência semana a semana**; (c) **taxa de conversão entre etapas** — tudo
+em **tabelas simples**, sempre **4 linhas = 4 últimas semanas** (sem novo desenho
+de funil), reaproveitando os placeholders "posts/alcance em manutenção".
+
+**Causa do "não computava":** o funil de período contava reunião pela tabela
+`meetings` (`getMeetingsScheduledCount`/`Attended`), que só é populada pelo
+formulário na tela do lead. Arrastar o card grava em `lead_stage_history`, não em
+`meetings` → reunião nunca aparecia.
+
+**Mudanças (decisões travadas com o Rodrigo):**
+- **Reunião passa a vir de `lead_stage_history`** (transições para
+  `meeting_scheduled`/`meeting_done`), via o `getLeadsReachedStageCount` que o
+  André já usava para proposta/venda. Isso **altera os números de reunião do
+  funil de período** desta branch — passam a refletir o kanban (fonte de verdade
+  da operação). Perde o detalhe no-show/cancelada da tabela `meetings`.
+- **Conversão = fluxo na semana** (throughput: `etapa_seguinte ÷ etapa_anterior`
+  da mesma semana; **não** coorte). Denominador 0 → `—`.
+- **Etapas = conjunto longo** (leads → formulário → qualificado → 1º contato →
+  reunião agendada → realizada → proposta → venda) + `posts`/`alcance` "em
+  manutenção".
+
+**Implementação:** módulos puros `server/lib/week-range` (`lastNWeeks`, `to`
+exclusivo, SP tz) e `server/lib/week-range/conversion` (`weeklyConversions`) com
+testes; `getWeeklyFunnel()` em `commercial-funnel.ts` reusa
+`getCommercialFunnelCounts` por semana; UI `dashboard/_components/weekly-funnel-section.tsx`
+(duas tabelas, 4 linhas, scroll horizontal), renderizada logo abaixo do funil de
+período. **Fixo em 4 semanas** — independe do `PeriodFilter`.
+
+**Verificação:** `pnpm typecheck` 0 erros; 230 testes passando (11 novos:
+`week-range` + `conversion`), 8 skip esperado. Verificação visual ao vivo
+pendente (ambiente sem `.env.local`/banco) — a fazer no preview.
