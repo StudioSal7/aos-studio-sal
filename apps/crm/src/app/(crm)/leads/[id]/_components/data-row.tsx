@@ -19,15 +19,26 @@ export function Section({
 export function DataRow({
   label,
   value,
+  href,
 }: {
   label: string;
   value: string | null | undefined;
+  /** Quando presente, o valor vira um link acionável (mailto:, wa.me, instagram.com/...). */
+  href?: string | null;
 }) {
   return (
     <>
       <dt className="text-ink-muted">{label}</dt>
       <dd className="text-ink">
-        {value ?? <span className="text-ink-muted">—</span>}
+        {value == null ? (
+          <span className="text-ink-muted">—</span>
+        ) : href ? (
+          <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            {value}
+          </a>
+        ) : (
+          value
+        )}
       </dd>
     </>
   );

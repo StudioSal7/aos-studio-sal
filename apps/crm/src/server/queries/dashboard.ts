@@ -1,6 +1,7 @@
-import { and, avg, count, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, avg, count, desc, eq, gte, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
+import type { DateRange } from '@/server/lib/date-range/index';
 
 export async function getPipelineCounts() {
   return db
@@ -222,18 +223,20 @@ export async function getTotalLeadsBySource() {
  * contato e têm timestamp de aplicação. Base da métrica "tempo até 1º contato".
  * Legados sem application_received_at ficam de fora (sem início confiável).
  */
-export async function getTimeToFirstContact() {
+export async function getTimeToFirstContact(range?: DateRange) {
+  const conditions = [
+    isNull(schema.leads.deletedAt),
+    isNotNull(schema.leads.applicationReceivedAt),
+    isNotNull(schema.leads.firstContactAt),
+  ];
+  if (range?.from) conditions.push(gte(schema.leads.applicationReceivedAt, range.from));
+  if (range?.to) conditions.push(lt(schema.leads.applicationReceivedAt, range.to));
+
   return db
     .select({
       applicationReceivedAt: schema.leads.applicationReceivedAt,
       firstContactAt: schema.leads.firstContactAt,
     })
     .from(schema.leads)
-    .where(
-      and(
-        isNull(schema.leads.deletedAt),
-        isNotNull(schema.leads.applicationReceivedAt),
-        isNotNull(schema.leads.firstContactAt),
-      ),
-    );
+    .where(and(...conditions));
 }

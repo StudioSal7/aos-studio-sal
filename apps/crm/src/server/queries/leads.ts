@@ -1,6 +1,63 @@
 import { and, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
+import type { RespondiAddress, RespondiAnswer, RespondiPayload } from '@/server/lib/respondi-payload-mapper/index';
+
+function formatRespondiAnswer(answer: RespondiAnswer): string | null {
+  if (answer == null) return null;
+  if (Array.isArray(answer)) {
+    return answer.length > 0 ? answer.join(', ') : null;
+  }
+  if (typeof answer === 'string') {
+    return answer.trim().length > 0 ? answer : null;
+  }
+  // RespondiAddress — junta os campos preenchidos numa linha legível.
+  const addr = answer as RespondiAddress;
+  const parts = [addr.street, addr.number, addr.addressComp, addr.neighborhood, addr.city, addr.state, addr.cep, addr.country]
+    .filter((p): p is string => !!p && p.trim().length > 0);
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
+// Respostas cruas do webhook Respondi (payload_raw em lead_intake_log), para
+// leads que NÃO vieram pelo formulário self-hosted (esses não têm form_responses).
+// Preserva o texto literal da pergunta (question_title) — inclusive perguntas
+// sem mapeamento para coluna do lead.
+export async function getLeadRespondiRawAnswers(leadId: string) {
+  const [entry] = await db
+    .select({
+      payloadRaw: schema.leadIntakeLog.payloadRaw,
+      receivedAt: schema.leadIntakeLog.receivedAt,
+    })
+    .from(schema.leadIntakeLog)
+    .where(
+      and(
+        eq(schema.leadIntakeLog.leadId, leadId),
+        eq(schema.leadIntakeLog.source, 'respondi_webhook'),
+      ),
+    )
+    .orderBy(desc(schema.leadIntakeLog.receivedAt))
+    .limit(1);
+
+  if (!entry?.payloadRaw) return null;
+
+  const payload = entry.payloadRaw as unknown as RespondiPayload;
+  const rawAnswers = payload?.respondent?.raw_answers;
+  if (!Array.isArray(rawAnswers) || rawAnswers.length === 0) return null;
+
+  const answers = rawAnswers
+    .map((r) => ({
+      title: r.question?.question_title ?? null,
+      value: formatRespondiAnswer(r.answer),
+    }))
+    .filter((a): a is { title: string; value: string } => !!a.title && !!a.value);
+
+  if (answers.length === 0) return null;
+
+  return {
+    receivedAt: entry.receivedAt,
+    answers,
+  };
+}
 
 export async function getKanbanLeads() {
   const stages = await db

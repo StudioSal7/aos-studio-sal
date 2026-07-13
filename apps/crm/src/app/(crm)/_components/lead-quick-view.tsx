@@ -119,7 +119,7 @@ export function LeadQuickView({
                 fechar
               </Button>
               <Link
-                href={`/leads/${lead.id}`}
+                href={`/leads/${lead.id}?tab=info`}
                 className="inline-flex items-center justify-center bg-ink px-4 py-2 text-btn text-paper transition-colors duration-300 hover:bg-ink-hover"
               >
                 abrir detalhe completo

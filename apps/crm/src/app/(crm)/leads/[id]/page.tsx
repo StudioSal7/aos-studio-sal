@@ -7,9 +7,15 @@ import {
   getAllStages,
   getLeadById,
   getLeadStageHistory,
+  getLeadRespondiRawAnswers,
 } from '@/server/queries/leads';
 import { getLeadFormResponses } from '@/server/queries/forms';
 import { getAnalysesForLead } from '@/server/queries/commercial';
+import {
+  buildInstagramLink,
+  buildMailtoLink,
+  buildWhatsAppLink,
+} from '@/server/lib/contact-links/index';
 import { Badge } from '@/components/ui/badge';
 import { ActivityTimeline } from './_components/activity-timeline';
 import { LeadDetailTabs } from './_components/lead-detail-tabs';
@@ -31,7 +37,7 @@ export default async function LeadDetailPage({
   const lead = await getLeadById(id);
   if (!lead) notFound();
 
-  const [history, stages, meetings, formResponses, analyses] = await Promise.all([
+  const [history, stages, meetings, formResponses, analyses, respondiAnswers] = await Promise.all([
     getLeadStageHistory(id),
     getAllStages(),
     db
@@ -41,10 +47,15 @@ export default async function LeadDetailPage({
       .orderBy(desc(schema.meetings.scheduledAt)),
     getLeadFormResponses(id),
     getAnalysesForLead(id),
+    getLeadRespondiRawAnswers(id),
   ]);
 
   const stageMap = new Map(stages.map((s) => [s.id, s]));
   const currentStage = stageMap.get(lead.stageId);
+
+  const mailtoLink = buildMailtoLink(lead.email);
+  const whatsappLink = buildWhatsAppLink(lead.whatsappE164);
+  const instagramLink = buildInstagramLink(lead.instagramHandle);
 
   return (
     <div className="flex flex-col">
@@ -62,9 +73,31 @@ export default async function LeadDetailPage({
               {lead.nickname ?? lead.name ?? 'sem nome'}.
             </h1>
             <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-body text-ink-muted">
-              {lead.email && <span>{lead.email}</span>}
-              {lead.whatsappE164 && <span>{lead.whatsappE164}</span>}
-              {lead.instagramHandle && <span>@{lead.instagramHandle}</span>}
+              {mailtoLink && (
+                <a href={mailtoLink} className="hover:text-ink hover:underline">
+                  {lead.email}
+                </a>
+              )}
+              {whatsappLink && (
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-ink hover:underline"
+                >
+                  {lead.whatsappE164}
+                </a>
+              )}
+              {instagramLink && (
+                <a
+                  href={instagramLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-ink hover:underline"
+                >
+                  @{lead.instagramHandle}
+                </a>
+              )}
             </p>
           </div>
 
@@ -107,7 +140,12 @@ export default async function LeadDetailPage({
           </div>
         }
         info={
-          <LeadDossier lead={lead} analyses={analyses} formResponses={formResponses} />
+          <LeadDossier
+            lead={lead}
+            analyses={analyses}
+            formResponses={formResponses}
+            respondiAnswers={respondiAnswers}
+          />
         }
         comercial={
           <div className="max-w-xl">
