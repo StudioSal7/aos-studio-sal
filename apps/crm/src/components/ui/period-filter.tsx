@@ -7,6 +7,7 @@
 // (dashboard/funil de vendas) quanto pro SalesRange de vendas-sal.
 
 import { useRef } from 'react';
+import type { Route } from 'next';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 
@@ -28,7 +29,7 @@ export function PeriodFilter<T extends string>({
     if (detailsRef.current) detailsRef.current.open = false;
     const params = new URLSearchParams(searchParams.toString());
     params.set(paramName, option);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    router.push(`${pathname}?${params.toString()}` as Route<string>, { scroll: false });
   }
 
   const currentLabel = options.find((o) => o.value === current)?.label ?? current;
