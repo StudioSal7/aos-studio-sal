@@ -110,6 +110,11 @@ Do ponto de vista do usuário:
     consistente.
 18. Como usuário, quero que o período fique **na URL** (compartilhável e
     persistente ao recarregar).
+18b. Como usuário, quero que o **seletor de período seja discreto**: por padrão
+    mostra só a opção ativa (ex.: "7 dias"), e ao clicar **expande** as demais
+    opções para eu escolher — em **todas as seções onde existe filtro de
+    período** (dashboard, funil de vendas, vendas SAL), não uma fileira de chips
+    sempre visível.
 
 ### Funil de vendas (ponta a ponta)
 
@@ -134,6 +139,9 @@ Do ponto de vista do usuário:
 24. Como usuário, quero o **SLA (tempo de primeiro atendimento) médio** por
     período (7d/30d/este mês/mês passado/todo o período), reusando o cálculo de
     "tempo até 1º contato" que já existe.
+24b. Como usuário, quero que esse card use um **rótulo por extenso** (ex.:
+    "tempo médio de primeiro atendimento") em vez da sigla técnica "SLA", para
+    não exigir conhecimento de jargão.
 
 ### Segurança (Supabase)
 
@@ -190,56 +198,63 @@ Do ponto de vista do usuário:
 
 **Filtro de período (UI):**
 
-- Seletor de período no topo do **dashboard** (e no bloco do funil de vendas),
-  dirigido por **`searchParams` (`?range=...`)** lido no Server Component. Prior
-  art direto: a página `vendas-sal` já faz exatamente isso (RANGE_OPTIONS + URL +
-  default). Reaproveitar o mesmo padrão de componente. Default `'7d'`.
+- **Seletor de período discreto (`PeriodFilter`)** — componente client
+  compartilhado, usado em **toda seção com filtro de período** (dashboard, funil
+  de vendas, e a página `vendas-sal` migra para o mesmo componente no lugar da
+  fileira de chips sempre visível que tem hoje). Estado fechado: mostra **só a
+  opção ativa** como um chip discreto (ex.: `7 dias ⌄`). Ao clicar, **expande**
+  inline as demais opções (`30 dias`, `este mês`, `mês passado`, `todo o
+  período`); ao escolher uma, atualiza `?range=...` na URL e recolhe. Implementar
+  com `<details>/<summary>` nativo (sem lib nova, sem necessidade de detectar
+  clique-fora) estilizado com os tokens do design system. Dirigido por
+  **`searchParams`** lido no Server Component pai — o próprio filtro só navega.
+  Default `'7d'`.
 
-**Funil de vendas (UI) — especificação visual concreta:**
+**Funil de vendas (UI) — especificação visual, com os ajustes do André de 13/07:**
 
-Nova seção **"funil de vendas."** no dashboard (abaixo do KPI hero, acima ou ao
-lado do "funil completo por status." — decisão: **logo abaixo do KPI hero**, é o
-bloco de maior destaque da apresentação). Mockup aprovado pelo André em 13/07.
-Layout exato:
+Nova seção **"funil de vendas."** no dashboard (logo abaixo do KPI hero — bloco
+de maior destaque da apresentação). Mockup inicial aprovado, com 5 ajustes
+posteriores incorporados (não regenerar o mockup — seguir a descrição abaixo):
 
-- **Cabeçalho da seção**: título `funil de vendas.` em Gowun Batang lowercase
-  (`text-h3`/`text-h2`), com o **seletor de período** alinhado à direita (chips:
-  `7 dias` ativo em `wood`/marrom sólido, os demais em `paper`/bege). Subtítulo
-  `micro` em `ink-muted`: "da atração à venda · leitura de ponta a ponta no
-  período".
-- **Funil = lista vertical de etapas** (não pirâmide/afunilamento gráfico — barras
-  horizontais decrescentes, mais legível e fiel à linguagem de gráficos já usada
-  no dashboard). Cada linha tem 3 colunas: **label à direita-alinhada** (largura
-  fixa ~150px), **trilho da barra** (flex, fundo `bg` bege `#e2d8c8`/token
-  equivalente, altura ~34px, sem radius) com a **barra preenchida** proporcional
-  ao valor, e o **valor à direita** (Gowun Batang ~19px).
-- **Cores das barras** (2 rampas, com legenda): etapas coletadas em **marrom**
-  (`wood`), a etapa final "vendas feitas" em **verde-folha** (`leaf`) para
-  destacar a conversão, e etapas em manutenção com **barra hachurada** (listras
-  45° bege) + **tag vermelha "em manutenção"** no lugar do número.
+- **Cabeçalho no padrão do resto do app**: título `funil de vendas.` (Gowun
+  Batang, lowercase) alinhado à esquerda, **`PeriodFilter` discreto** alinhado à
+  direita na mesma linha, e uma **divisória horizontal** (`border-b border-line`)
+  logo abaixo do título separando cabeçalho do conteúdo — mesmo padrão do
+  `PageHeader` (título em cima, linha divisória, conteúdo abaixo), replicado
+  aqui dentro da seção. **Sem subtítulo** ("da atração à venda..." foi removido
+  — redundante com o título).
+- **Funil = lista vertical de etapas** (barras horizontais decrescentes, não
+  pirâmide). Cada linha: **label à direita-alinhada** (~150px), **trilho da
+  barra** (`bg-canvas`, altura ~34px, sem radius) com a **barra preenchida**
+  proporcional ao valor, e o **valor à direita** (Gowun Batang ~19px).
+- **Cores das barras**: etapas coletadas em **marrom** (`wood`); a etapa final
+  "vendas feitas" em **verde-folha** (`leaf`) para destacar a conversão; etapas
+  em manutenção com **barra hachurada** + **tag vermelha "em manutenção"** no
+  lugar do número (mesma cor/linguagem do badge `fake` já existente, token
+  `clay`). **Sem legenda de rodapé** ("coletada · venda · em manutenção" foi
+  removida — a tag vermelha já é autoexplicativa por si só).
 - **Taxa de conversão entre etapas coletadas**: micro-linha `↓ NN% avançam`
-  abaixo de cada etapa, alinhada ao início do trilho (`ink-muted`).
+  abaixo de cada etapa (`ink-muted`).
 - **Ordem das etapas**: posts feitos → visualizações geradas → formulários
   enviados → reuniões agendadas → reuniões comparecidas → propostas realizadas →
-  vendas feitas. As 2 primeiras entram com a tag "em manutenção" (barra hachurada
-  full-width) para o funil **parecer completo** na apresentação.
-- **Legenda** (rodapé da seção, `micro`): coletada (marrom) · venda (verde) · em
-  manutenção (hachura).
+  vendas feitas. As 2 primeiras com a tag "em manutenção" para o funil **parecer
+  completo** na apresentação.
 - **Dois mini-cards** abaixo do funil, lado a lado (mesmo padrão dos KPI cards):
-  **SLA · 1º atendimento** (valor real: mediana + % em 24h, filtrado pelo período)
-  e **follow-ups / lead** (valor `—` + tag vermelha "em manutenção" + legenda
-  "aguarda base de mensagens").
-- **Responsividade / anti-bug**: todas as caixas e o trilho usam `min-w-0
-  overflow-hidden` e `minmax(0,1fr)` nas grids, para **não repetir o overflow**
-  dos KPI cards em zoom.
+  - **"tempo médio de primeiro atendimento"** — rótulo **por extenso**, nunca a
+    sigla "SLA" (evitar jargão técnico). Valor real: mediana + % dentro de 24h,
+    filtrado pelo período.
+  - **"quantidade de follow-up por lead"** — valor `—` + tag vermelha "em
+    manutenção" (aguarda base de mensagens).
+- **Responsividade/anti-bug**: todas as caixas e o trilho usam `min-w-0
+  overflow-hidden` e `minmax(0,1fr)` nas grids, para não repetir o overflow dos
+  KPI cards em zoom.
 
-Referência do layout (mockup aprovado — o executor reproduz na identidade real
-com tokens do design system, não com os hex do mockup):
+Referência textual do layout final (após os 5 ajustes — não é mais o mockup
+visual original, que tinha legenda/subtítulo/chips sempre visíveis):
 
 ```
-funil de vendas.                        [7 dias] 30 dias  este mês  mês passado  tudo
-da atração à venda · leitura de ponta a ponta no período
-
+funil de vendas.                                         [7 dias ⌄]
+──────────────────────────────────────────────────────────────────
         posts feitos  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  [em manutenção]
  visualizações ger.  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  [em manutenção]
 formulários envi...  ███████████████████        48
@@ -252,8 +267,7 @@ propostas realiz...  ███████                     9
                      ↓ 44% avançam
       vendas feitas  ████ (verde)                4
 
-[ SLA · 1º atend.  2d ]   [ follow-ups/lead  —  (em manutenção) ]
-coletada · venda · em manutenção
+[ tempo médio de primeiro atendimento   2d ]   [ quantidade de follow-up por lead   —  em manutenção ]
 ```
 
 ### Correções de layout (decisões concretas)
