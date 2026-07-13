@@ -78,6 +78,13 @@
       "when": 1782851643434,
       "tag": "0010_little_agent_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783967984899,
+      "tag": "0011_enable_rls_public_tables",
+      "breakpoints": true
     }
   ]
 }

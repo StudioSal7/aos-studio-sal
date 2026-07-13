@@ -3,7 +3,7 @@
 // dados (dependem de Meta Ads/GA4 — fase posterior) e não entram aqui; a UI
 // as trata com a tag "em manutenção".
 
-import { and, count, eq, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import type { DateRange } from '@/server/lib/date-range/index';
@@ -49,17 +49,19 @@ export async function getFormResponsesCount(range: DateRange): Promise<number> {
   return Number(row?.value ?? 0);
 }
 
-// Reuniões agendadas no período — quando a AÇÃO de agendar aconteceu
-// (meetings.created_at), não a data futura da reunião em si.
+// Reuniões agendadas no período — meetings com status ativo (exclui
+// cancelada/não_realizada), filtradas pela data da reunião (scheduled_at).
 export async function getMeetingsScheduledCount(range: DateRange): Promise<number> {
-  const conditions: SQL[] = [];
-  if (range.from) conditions.push(sql`${schema.meetings.createdAt} >= ${range.from.toISOString()}::timestamptz`);
-  if (range.to) conditions.push(sql`${schema.meetings.createdAt} < ${range.to.toISOString()}::timestamptz`);
+  const conditions: SQL[] = [
+    inArray(schema.meetings.status, ['agendada', 'realizada', 'reagendada']),
+  ];
+  if (range.from) conditions.push(sql`${schema.meetings.scheduledAt} >= ${range.from.toISOString()}::timestamptz`);
+  if (range.to) conditions.push(sql`${schema.meetings.scheduledAt} < ${range.to.toISOString()}::timestamptz`);
 
   const [row] = await db
     .select({ value: count() })
     .from(schema.meetings)
-    .where(conditions.length > 0 ? and(...conditions) : undefined);
+    .where(and(...conditions));
   return Number(row?.value ?? 0);
 }
 

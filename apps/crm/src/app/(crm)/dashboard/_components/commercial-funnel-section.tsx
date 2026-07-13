@@ -127,7 +127,13 @@ export function CommercialFunnelSection({
         })}
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 [&>*]:min-w-0">
+      <div className="mt-6 grid grid-cols-3 gap-4 [&>*]:min-w-0">
+        <Card className="min-w-0 overflow-hidden">
+          <p className="text-micro text-ink-muted">leads que entraram no período</p>
+          <p className="mt-3 break-words text-[26px] font-serif normal-case leading-[1.15] tracking-tight text-ink">
+            {counts.leadsEntered}
+          </p>
+        </Card>
         <Card className="min-w-0 overflow-hidden">
           <p className="text-micro text-ink-muted">tempo médio de primeiro atendimento</p>
           <p className="mt-3 break-words text-[26px] font-serif normal-case leading-[1.15] tracking-tight text-ink">
