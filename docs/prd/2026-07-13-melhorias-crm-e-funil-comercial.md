@@ -195,16 +195,66 @@ Do ponto de vista do usuário:
   art direto: a página `vendas-sal` já faz exatamente isso (RANGE_OPTIONS + URL +
   default). Reaproveitar o mesmo padrão de componente. Default `'7d'`.
 
-**Funil de vendas (UI):**
+**Funil de vendas (UI) — especificação visual concreta:**
 
-- Nova seção **"funil de vendas."** no dashboard, mantendo a identidade visual
-  (tokens `canvas/paper/ink/wood/leaf/clay`, Gowun Batang, cards sem radius, tom
-  editorial lowercase). Cada etapa é uma linha/estágio do funil. Etapas coletadas
-  mostram número + proporção; etapas não coletadas mostram uma **tag vermelha
-  "em manutenção"** (`bg-red-*`/`text-red-*`, mesma linguagem dos badges já
-  existentes tipo StatusBadge) no lugar do número.
-- Cards de **follow-up** e (se aplicável) métricas dependentes de integração
-  seguem o mesmo tratamento de tag "em manutenção".
+Nova seção **"funil de vendas."** no dashboard (abaixo do KPI hero, acima ou ao
+lado do "funil completo por status." — decisão: **logo abaixo do KPI hero**, é o
+bloco de maior destaque da apresentação). Mockup aprovado pelo André em 13/07.
+Layout exato:
+
+- **Cabeçalho da seção**: título `funil de vendas.` em Gowun Batang lowercase
+  (`text-h3`/`text-h2`), com o **seletor de período** alinhado à direita (chips:
+  `7 dias` ativo em `wood`/marrom sólido, os demais em `paper`/bege). Subtítulo
+  `micro` em `ink-muted`: "da atração à venda · leitura de ponta a ponta no
+  período".
+- **Funil = lista vertical de etapas** (não pirâmide/afunilamento gráfico — barras
+  horizontais decrescentes, mais legível e fiel à linguagem de gráficos já usada
+  no dashboard). Cada linha tem 3 colunas: **label à direita-alinhada** (largura
+  fixa ~150px), **trilho da barra** (flex, fundo `bg` bege `#e2d8c8`/token
+  equivalente, altura ~34px, sem radius) com a **barra preenchida** proporcional
+  ao valor, e o **valor à direita** (Gowun Batang ~19px).
+- **Cores das barras** (2 rampas, com legenda): etapas coletadas em **marrom**
+  (`wood`), a etapa final "vendas feitas" em **verde-folha** (`leaf`) para
+  destacar a conversão, e etapas em manutenção com **barra hachurada** (listras
+  45° bege) + **tag vermelha "em manutenção"** no lugar do número.
+- **Taxa de conversão entre etapas coletadas**: micro-linha `↓ NN% avançam`
+  abaixo de cada etapa, alinhada ao início do trilho (`ink-muted`).
+- **Ordem das etapas**: posts feitos → visualizações geradas → formulários
+  enviados → reuniões agendadas → reuniões comparecidas → propostas realizadas →
+  vendas feitas. As 2 primeiras entram com a tag "em manutenção" (barra hachurada
+  full-width) para o funil **parecer completo** na apresentação.
+- **Legenda** (rodapé da seção, `micro`): coletada (marrom) · venda (verde) · em
+  manutenção (hachura).
+- **Dois mini-cards** abaixo do funil, lado a lado (mesmo padrão dos KPI cards):
+  **SLA · 1º atendimento** (valor real: mediana + % em 24h, filtrado pelo período)
+  e **follow-ups / lead** (valor `—` + tag vermelha "em manutenção" + legenda
+  "aguarda base de mensagens").
+- **Responsividade / anti-bug**: todas as caixas e o trilho usam `min-w-0
+  overflow-hidden` e `minmax(0,1fr)` nas grids, para **não repetir o overflow**
+  dos KPI cards em zoom.
+
+Referência do layout (mockup aprovado — o executor reproduz na identidade real
+com tokens do design system, não com os hex do mockup):
+
+```
+funil de vendas.                        [7 dias] 30 dias  este mês  mês passado  tudo
+da atração à venda · leitura de ponta a ponta no período
+
+        posts feitos  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  [em manutenção]
+ visualizações ger.  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  [em manutenção]
+formulários envi...  ███████████████████        48
+                     ↓ 46% avançam
+reuniões agendadas   █████████████              22
+                     ↓ 68% avançam
+reuniões compare...  ██████████                 15
+                     ↓ 60% avançam
+propostas realiz...  ███████                     9
+                     ↓ 44% avançam
+      vendas feitas  ████ (verde)                4
+
+[ SLA · 1º atend.  2d ]   [ follow-ups/lead  —  (em manutenção) ]
+coletada · venda · em manutenção
+```
 
 ### Correções de layout (decisões concretas)
 
