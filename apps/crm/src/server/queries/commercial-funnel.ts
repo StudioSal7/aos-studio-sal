@@ -9,7 +9,7 @@
 // kanban e arrastar o card É o evento; a tabela `meetings` só é populada pelo
 // formulário na tela do lead, que a operação nem sempre usa.
 
-import { and, count, eq, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import type { DateRange } from '@/server/lib/date-range/index';
@@ -151,25 +151,119 @@ export async function getCommercialFunnelCounts(range: DateRange): Promise<Comme
 }
 
 // Evolução semanal: as N semanas de calendário mais recentes (segunda→domingo,
-// America/Sao_Paulo), a corrente inclusa (parcial). Reusa a mesma lógica de
-// contagem por semana. Independe do filtro de período do funil.
+// America/Sao_Paulo), a corrente inclusa (parcial). Independe do filtro de
+// período do funil.
 //
-// Semanas em SEQUÊNCIA, não em paralelo: cada getCommercialFunnelCounts já
-// dispara ~8 queries concorrentes; 4 semanas em paralelo somariam ~32 queries
-// simultâneas contra o pool de 10 conexões do client (@repo/db/client,
-// `max: 10`), empilhadas em cima do resto das queries do dashboard —
-// exauriu o pool em produção ("Uncaught Error: Connection closed" no
-// console). Sequencial mantém o pico de concorrência igual ao de uma única
-// chamada de funil; a latência extra é aceitável num dashboard interno.
+// ⚠️ Custo de query é o gargalo aqui. A versão ingênua (chamar
+// getCommercialFunnelCounts por semana) faz N×8 idas ao banco — com N=4, são
+// 32 round-trips só pra esta seção, em cima das ~20 do resto do dashboard.
+// Em paralelo, isso esgotou o pool de 10 conexões (@repo/db/client `max: 10`)
+// → "Connection closed"; em sequência, estourou o tempo da serverless
+// function → 504 FUNCTION_INVOCATION_TIMEOUT. Ambos são o MESMO sintoma:
+// query demais. Aqui colapsamos tudo em 3 queries agrupadas — uma por fonte
+// (leads / form_responses / lead_stage_history) — usando `count(*) FILTER
+// (WHERE ...)` com os MESMOS limites [from, to) de cada semana. Como os
+// predicados são idênticos aos da versão por-semana, os números batem
+// exatamente; só o nº de round-trips cai de 32 → 3.
+
+const WEEKLY_STAGE_SLUGS = [
+  'qualified',
+  'first_contact_sent',
+  'meeting_scheduled',
+  'meeting_done',
+  'proposal_sent',
+  'paid',
+] as const;
+
+// count(*) FILTER (WHERE expr ∈ [semana_i.from, semana_i.to)) para cada semana,
+// como colunas w0..w{n-1}. `sql.raw(w${i})` usa só o índice do loop (nunca
+// entrada do usuário) → sem risco de injeção.
+function weeklyFilterColumns(ranges: WeekRange[], dateExpr: SQL): SQL {
+  return sql.join(
+    ranges.map(
+      (w, i) =>
+        sql`count(*) filter (where ${dateExpr} >= ${w.from.toISOString()}::timestamptz and ${dateExpr} < ${w.to.toISOString()}::timestamptz) as ${sql.raw(
+          `w${i}`,
+        )}`,
+    ),
+    sql`, `,
+  );
+}
+
+function readWeekRow(row: Record<string, unknown> | undefined, n: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) out.push(Number(row?.[`w${i}`] ?? 0));
+  return out;
+}
+
 export async function getWeeklyFunnel(
   weeks = 4,
   now: Date = new Date(),
 ): Promise<WeeklyFunnelRow[]> {
   const ranges: WeekRange[] = lastNWeeks(weeks, now);
-  const rows: WeeklyFunnelRow[] = [];
-  for (const week of ranges) {
-    const counts = await getCommercialFunnelCounts({ from: week.from, to: week.to });
-    rows.push({ label: week.label, isCurrent: week.isCurrent, counts });
+  if (ranges.length === 0) return [];
+
+  // Janela geral = da segunda mais antiga até a segunda seguinte à corrente.
+  // As semanas são contíguas e sem sobreposição, então cada linha do banco
+  // cai em exatamente um FILTER — a soma dos filtros = total na janela.
+  const overallFrom = ranges[ranges.length - 1]!.from.toISOString();
+  const overallTo = ranges[0]!.to.toISOString();
+  const n = ranges.length;
+
+  const entryExpr = sql`coalesce(${schema.leads.applicationReceivedAt}, ${schema.leads.createdAt})`;
+
+  const [leadsRows, formRows, stageRows] = await Promise.all([
+    // 1) leads que entraram, por semana
+    db.execute(sql`
+      select ${weeklyFilterColumns(ranges, entryExpr)}
+      from ${schema.leads}
+      where ${schema.leads.deletedAt} is null
+        and ${entryExpr} >= ${overallFrom}::timestamptz
+        and ${entryExpr} < ${overallTo}::timestamptz
+    `) as unknown as Promise<Array<Record<string, unknown>>>,
+    // 2) formulários concluídos, por semana
+    db.execute(sql`
+      select ${weeklyFilterColumns(ranges, sql`${schema.formResponses.concluidoEm}`)}
+      from ${schema.formResponses}
+      where ${schema.formResponses.parcial} = false
+        and ${schema.formResponses.concluidoEm} >= ${overallFrom}::timestamptz
+        and ${schema.formResponses.concluidoEm} < ${overallTo}::timestamptz
+    `) as unknown as Promise<Array<Record<string, unknown>>>,
+    // 3) transições de estágio (qualificado→venda), por slug × semana
+    db.execute(sql`
+      select ${schema.leadStages.slug} as slug,
+        ${weeklyFilterColumns(ranges, sql`${schema.leadStageHistory.changedAt}`)}
+      from ${schema.leadStageHistory}
+      inner join ${schema.leadStages}
+        on ${schema.leadStages.id} = ${schema.leadStageHistory.toStageId}
+      where ${inArray(schema.leadStages.slug, [...WEEKLY_STAGE_SLUGS])}
+        and ${schema.leadStageHistory.changedAt} >= ${overallFrom}::timestamptz
+        and ${schema.leadStageHistory.changedAt} < ${overallTo}::timestamptz
+      group by ${schema.leadStages.slug}
+    `) as unknown as Promise<Array<Record<string, unknown>>>,
+  ]);
+
+  const leadsByWeek = readWeekRow(leadsRows[0], n);
+  const formsByWeek = readWeekRow(formRows[0], n);
+
+  const stageByWeek = new Map<string, number[]>();
+  for (const row of stageRows) {
+    stageByWeek.set(String(row.slug), readWeekRow(row, n));
   }
-  return rows;
+  const stageAt = (slug: string, i: number): number => stageByWeek.get(slug)?.[i] ?? 0;
+
+  return ranges.map((week, i) => ({
+    label: week.label,
+    isCurrent: week.isCurrent,
+    counts: {
+      leadsEntered: leadsByWeek[i] ?? 0,
+      formResponses: formsByWeek[i] ?? 0,
+      qualifiedReached: stageAt('qualified', i),
+      firstContactReached: stageAt('first_contact_sent', i),
+      meetingsScheduled: stageAt('meeting_scheduled', i),
+      meetingsAttended: stageAt('meeting_done', i),
+      proposalsSent: stageAt('proposal_sent', i),
+      salesWon: stageAt('paid', i),
+    },
+  }));
 }

@@ -35,6 +35,14 @@ import { WeeklyFunnelSection } from './_components/weekly-funnel-section';
 // sem o ambiente de runtime, quebrando o deploy.
 export const dynamic = 'force-dynamic';
 
+// O dashboard agrega muitas queries (pipeline, funil, evolução semanal, KPIs)
+// num único render server-side. O default de execução da Vercel (~15s) já
+// estourou aqui (504 FUNCTION_INVOCATION_TIMEOUT) quando a evolução semanal
+// fazia 32 round-trips; isso foi resolvido colapsando-a em 3 queries agrupadas
+// (ver getWeeklyFunnel). maxDuration=60 é folga defensiva contra picos de
+// latência do banco — não substitui manter o nº de queries baixo.
+export const maxDuration = 60;
+
 // Extrai o valor mínimo implícito de um label de renda/orçamento para ordenação crescente.
 function extractMinValue(label: string): number {
   const lower = label.toLowerCase();
