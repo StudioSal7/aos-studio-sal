@@ -117,36 +117,51 @@ export async function getSalesWonCount(range: DateRange): Promise<number> {
   return getLeadsReachedStageCount('paid', range);
 }
 
+// Conta, numa ÚNICA query, quantos leads atingiram cada um dos estágios (JOIN
+// lead_stages + GROUP BY slug), em vez de 2 queries por estágio (lookup de id +
+// count). Reduz getCommercialFunnelCounts de 14 → 3 queries — decisivo porque
+// na serverless da Vercel + conexão direta do Supabase o dashboard (~28 queries)
+// serializava e estourava o tempo da função (a UI via como "Connection closed").
+async function getStageReachedCounts(
+  slugs: readonly string[],
+  range: DateRange,
+): Promise<Map<string, number>> {
+  const conditions: SQL[] = [inArray(schema.leadStages.slug, [...slugs])];
+  if (range.from) {
+    conditions.push(sql`${schema.leadStageHistory.changedAt} >= ${range.from.toISOString()}::timestamptz`);
+  }
+  if (range.to) {
+    conditions.push(sql`${schema.leadStageHistory.changedAt} < ${range.to.toISOString()}::timestamptz`);
+  }
+
+  const rows = await db
+    .select({ slug: schema.leadStages.slug, value: count() })
+    .from(schema.leadStageHistory)
+    .innerJoin(schema.leadStages, eq(schema.leadStages.id, schema.leadStageHistory.toStageId))
+    .where(and(...conditions))
+    .groupBy(schema.leadStages.slug);
+
+  const map = new Map<string, number>();
+  for (const r of rows) map.set(r.slug, Number(r.value));
+  return map;
+}
+
 export async function getCommercialFunnelCounts(range: DateRange): Promise<CommercialFunnelCounts> {
-  const [
-    leadsEntered,
-    formResponses,
-    qualifiedReached,
-    firstContactReached,
-    meetingsScheduled,
-    meetingsAttended,
-    proposalsSent,
-    salesWon,
-  ] = await Promise.all([
+  const [leadsEntered, formResponses, stageCounts] = await Promise.all([
     getLeadsEnteredCount(range),
     getFormResponsesCount(range),
-    getQualifiedReachedCount(range),
-    getFirstContactReachedCount(range),
-    getMeetingsScheduledCount(range),
-    getMeetingsAttendedCount(range),
-    getProposalsSentCount(range),
-    getSalesWonCount(range),
+    getStageReachedCounts(WEEKLY_STAGE_SLUGS, range),
   ]);
 
   return {
     leadsEntered,
     formResponses,
-    qualifiedReached,
-    firstContactReached,
-    meetingsScheduled,
-    meetingsAttended,
-    proposalsSent,
-    salesWon,
+    qualifiedReached: stageCounts.get('qualified') ?? 0,
+    firstContactReached: stageCounts.get('first_contact_sent') ?? 0,
+    meetingsScheduled: stageCounts.get('meeting_scheduled') ?? 0,
+    meetingsAttended: stageCounts.get('meeting_done') ?? 0,
+    proposalsSent: stageCounts.get('proposal_sent') ?? 0,
+    salesWon: stageCounts.get('paid') ?? 0,
   };
 }
 

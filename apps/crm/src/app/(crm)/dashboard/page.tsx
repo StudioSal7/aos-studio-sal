@@ -102,28 +102,6 @@ function formatMonth(ym: string): string {
   return `${MONTH_LABELS[m]}/${yy}`;
 }
 
-// Extraído pra função só pra permitir o try/catch de diagnóstico no componente
-// mantendo os tipos do tuple inferidos pelo Promise.all. Reverter junto com o
-// bloco de diagnóstico.
-function fetchDashboardData(range: ReturnType<typeof resolveDateRange>) {
-  return Promise.all([
-    getPipelineCounts(),
-    getAvgTimePerStage(),
-    getRecentActivity(20),
-    getDataQuality(),
-    getLeadsByMonth(),
-    getLeadsByRenda(),
-    getLeadsByOrcamento(),
-    getPontuacaoVsEngajamento(),
-    getConversaoPorFonte(),
-    getTotalLeadsBySource(),
-    getTimeToFirstContact(),
-    getCommercialFunnelCounts(range),
-    getTimeToFirstContact(range),
-    getWeeklyFunnel(),
-  ]);
-}
-
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -133,54 +111,6 @@ export default async function DashboardPage({
   const rangeOption = isDateRangeOption(params.range) ? params.range : DEFAULT_DATE_RANGE;
   const range = resolveDateRange(rangeOption);
 
-  // ⚠️ DIAGNÓSTICO TEMPORÁRIO — remover após identificar a causa do erro só na
-  // Vercel (o dashboard renderiza limpo local, inclusive em build de produção).
-  // Se o Promise.all falhar, roda de novo isolando CADA query pra mostrar na
-  // própria página qual falhou e o erro exato (+ console.error → runtime logs).
-  let __bundle: Awaited<ReturnType<typeof fetchDashboardData>>;
-  try {
-    __bundle = await fetchDashboardData(range);
-  } catch (err) {
-    console.error('[dashboard][DIAG] Promise.all falhou:', err);
-    const probes: Array<[string, () => Promise<unknown>]> = [
-      ['getPipelineCounts', () => getPipelineCounts()],
-      ['getAvgTimePerStage', () => getAvgTimePerStage()],
-      ['getRecentActivity', () => getRecentActivity(20)],
-      ['getDataQuality', () => getDataQuality()],
-      ['getLeadsByMonth', () => getLeadsByMonth()],
-      ['getLeadsByRenda', () => getLeadsByRenda()],
-      ['getLeadsByOrcamento', () => getLeadsByOrcamento()],
-      ['getPontuacaoVsEngajamento', () => getPontuacaoVsEngajamento()],
-      ['getConversaoPorFonte', () => getConversaoPorFonte()],
-      ['getTotalLeadsBySource', () => getTotalLeadsBySource()],
-      ['getTimeToFirstContact(all)', () => getTimeToFirstContact()],
-      ['getCommercialFunnelCounts', () => getCommercialFunnelCounts(range)],
-      ['getTimeToFirstContact(range)', () => getTimeToFirstContact(range)],
-      ['getWeeklyFunnel', () => getWeeklyFunnel()],
-    ];
-    const settled = await Promise.allSettled(probes.map(([, fn]) => fn()));
-    const diag = settled.map((s, i) => ({
-      query: probes[i]![0],
-      status: s.status,
-      erro:
-        s.status === 'rejected'
-          ? String((s.reason as Error)?.stack ?? (s.reason as Error)?.message ?? s.reason)
-          : null,
-    }));
-    for (const d of diag) if (d.erro) console.error(`[dashboard][DIAG] ${d.query} FALHOU:`, d.erro);
-    return (
-      <div style={{ padding: 24, fontFamily: 'ui-monospace, monospace', fontSize: 12, whiteSpace: 'pre-wrap' }}>
-        <h1 style={{ fontSize: 16, marginBottom: 12 }}>diagnóstico do dashboard — queries no servidor</h1>
-        <div style={{ marginBottom: 16 }}>erro do Promise.all: {String((err as Error)?.message ?? err)}</div>
-        {diag.map((d) => (
-          <div key={d.query} style={{ marginBottom: 10 }}>
-            {d.status === 'rejected' ? '❌' : '✅'} <strong>{d.query}</strong>
-            {d.erro ? `\n${d.erro}` : ''}
-          </div>
-        ))}
-      </div>
-    );
-  }
   const [
     pipelineCounts,
     avgTimes,
@@ -196,7 +126,22 @@ export default async function DashboardPage({
     funnelCounts,
     ttfcRangeRows,
     weeklyFunnel,
-  ] = __bundle;
+  ] = await Promise.all([
+    getPipelineCounts(),
+    getAvgTimePerStage(),
+    getRecentActivity(20),
+    getDataQuality(),
+    getLeadsByMonth(),
+    getLeadsByRenda(),
+    getLeadsByOrcamento(),
+    getPontuacaoVsEngajamento(),
+    getConversaoPorFonte(),
+    getTotalLeadsBySource(),
+    getTimeToFirstContact(),
+    getCommercialFunnelCounts(range),
+    getTimeToFirstContact(range),
+    getWeeklyFunnel(),
+  ]);
 
   const ttfc = computeFirstContactMetric(ttfcDurationsFromRows(ttfcRows));
   const ttfcRange = computeFirstContactMetric(ttfcDurationsFromRows(ttfcRangeRows));
