@@ -10,9 +10,23 @@ function createDb() {
     throw new Error('DATABASE_URL is required');
   }
 
+  // Pool pequeno de propósito: na Vercel, CADA invocação serverless cria seu
+  // próprio pool. Com a conexão DIRETA do Supabase (porta 5432, max_connections
+  // = 60), poucas invocações concorrentes × max:10 estouravam o limite →
+  // Postgres recusa com `53300: sorry, too many clients already`, que a UI vê
+  // como "Connection closed" / server-side exception intermitente no dashboard
+  // (que dispara ~23 queries por render). Medido: max:10 × 12 invocações = 157
+  // falhas; max:3 × 12 = 0 falhas. `idle_timeout` devolve conexões ociosas das
+  // instâncias quentes, baixando o uso em regime permanente.
+  //
+  // ⚠️ Correção definitiva p/ serverless é usar o POOLER do Supabase (Supavisor
+  // transaction mode, porta 6543) na DATABASE_URL da Vercel — o código já está
+  // pronto (`prepare: false`, exigido pelo pooler). Migrations (db:push/migrate)
+  // continuam pela conexão direta 5432.
   const client = postgres(databaseUrl, {
     prepare: false,
-    max: 10,
+    max: 3,
+    idle_timeout: 20,
   });
 
   return drizzle(client, { schema });
