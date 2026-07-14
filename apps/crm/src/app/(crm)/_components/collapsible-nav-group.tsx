@@ -27,7 +27,14 @@ export function CollapsibleNavGroup({
           className={`text-ink-muted transition-transform duration-200 ${open ? 'rotate-0' : '-rotate-90'}`}
         />
       </button>
-      {open && <div className="space-y-1">{children}</div>}
+      <div
+        className="grid transition-[grid-template-rows] duration-200 ease-out"
+        style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
+          <div className="space-y-1">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }

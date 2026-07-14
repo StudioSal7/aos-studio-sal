@@ -14,6 +14,12 @@ import {
   getTimeToFirstContact,
 } from '@/server/queries/dashboard';
 import { computeFirstContactMetric } from '@/server/lib/first-contact-metric';
+import { getCommercialFunnelCounts, getWeeklyFunnel } from '@/server/queries/commercial-funnel';
+import {
+  DEFAULT_DATE_RANGE,
+  isDateRangeOption,
+  resolveDateRange,
+} from '@/server/lib/date-range/index';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { CHART_COLORS } from '@/components/charts/chart-theme';
@@ -21,11 +27,21 @@ import { HorizontalBarChart } from '@/components/charts/horizontal-bar-chart';
 import { StackedBarChart } from '@/components/charts/stacked-bar-chart';
 import { DonutChart } from '@/components/charts/donut-chart';
 import { DualAxisChart } from '@/components/charts/dual-axis-chart';
+import { CommercialFunnelSection } from './_components/commercial-funnel-section';
+import { WeeklyFunnelSection } from './_components/weekly-funnel-section';
 
 // Dashboard lê dados vivos por trás do auth — nunca deve ser pré-renderizado no
 // build. Sem isto, o Next tenta exportar /dashboard no build e executa as queries
 // sem o ambiente de runtime, quebrando o deploy.
 export const dynamic = 'force-dynamic';
+
+// O dashboard agrega muitas queries (pipeline, funil, evolução semanal, KPIs)
+// num único render server-side. O default de execução da Vercel (~15s) já
+// estourou aqui (504 FUNCTION_INVOCATION_TIMEOUT) quando a evolução semanal
+// fazia 32 round-trips; isso foi resolvido colapsando-a em 3 queries agrupadas
+// (ver getWeeklyFunnel). maxDuration=60 é folga defensiva contra picos de
+// latência do banco — não substitui manter o nº de queries baixo.
+export const maxDuration = 60;
 
 // Extrai o valor mínimo implícito de um label de renda/orçamento para ordenação crescente.
 function extractMinValue(label: string): number {
@@ -43,6 +59,23 @@ function formatDuration(seconds: string | number | null): string {
   if (s < 3600) return `${Math.round(s / 60)}min`;
   if (s < 86400) return `${Math.round(s / 3600)}h`;
   return `${Math.round(s / 86400)}d`;
+}
+
+// A query já filtra ambos NOT NULL, mas guardamos aqui contra null/tipo
+// inesperado (o driver pode devolver string p/ timestamptz) — new Date()
+// aceita Date e string, sem depender de non-null assertion.
+function ttfcDurationsFromRows(
+  rows: { firstContactAt: Date | string | null; applicationReceivedAt: Date | string | null }[],
+): number[] {
+  return rows
+    .map((r) => {
+      if (!r.firstContactAt || !r.applicationReceivedAt) return null;
+      const fc = new Date(r.firstContactAt).getTime();
+      const ar = new Date(r.applicationReceivedAt).getTime();
+      if (Number.isNaN(fc) || Number.isNaN(ar)) return null;
+      return (fc - ar) / 1000;
+    })
+    .filter((d): d is number => d !== null);
 }
 
 function pct(part: number, total: number) {
@@ -69,7 +102,15 @@ function formatMonth(ym: string): string {
   return `${MONTH_LABELS[m]}/${yy}`;
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const params = await searchParams;
+  const rangeOption = isDateRangeOption(params.range) ? params.range : DEFAULT_DATE_RANGE;
+  const range = resolveDateRange(rangeOption);
+
   const [
     pipelineCounts,
     avgTimes,
@@ -82,10 +123,13 @@ export default async function DashboardPage() {
     conversaoPorFonte,
     bySource,
     ttfcRows,
+    funnelCounts,
+    ttfcRangeRows,
+    weeklyFunnel,
   ] = await Promise.all([
     getPipelineCounts(),
     getAvgTimePerStage(),
-    getRecentActivity(10),
+    getRecentActivity(20),
     getDataQuality(),
     getLeadsByMonth(),
     getLeadsByRenda(),
@@ -94,21 +138,13 @@ export default async function DashboardPage() {
     getConversaoPorFonte(),
     getTotalLeadsBySource(),
     getTimeToFirstContact(),
+    getCommercialFunnelCounts(range),
+    getTimeToFirstContact(range),
+    getWeeklyFunnel(),
   ]);
 
-  const ttfcDurations = ttfcRows
-    .map((r) => {
-      // A query já filtra ambos NOT NULL, mas guardamos aqui contra null/tipo
-      // inesperado (o driver pode devolver string p/ timestamptz) — new Date()
-      // aceita Date e string, sem depender de non-null assertion.
-      if (!r.firstContactAt || !r.applicationReceivedAt) return null;
-      const fc = new Date(r.firstContactAt).getTime();
-      const ar = new Date(r.applicationReceivedAt).getTime();
-      if (Number.isNaN(fc) || Number.isNaN(ar)) return null;
-      return (fc - ar) / 1000;
-    })
-    .filter((d): d is number => d !== null);
-  const ttfc = computeFirstContactMetric(ttfcDurations);
+  const ttfc = computeFirstContactMetric(ttfcDurationsFromRows(ttfcRows));
+  const ttfcRange = computeFirstContactMetric(ttfcDurationsFromRows(ttfcRangeRows));
 
   const avgByStageId = new Map(avgTimes.map((a) => [a.toStageId, a.avgDurationSeconds]));
 
@@ -242,7 +278,7 @@ export default async function DashboardPage() {
 
       <div className="space-y-10 p-8">
         {/* KPI hero */}
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-6 gap-4 [&>*]:min-w-0">
           <KpiCard label="total de leads" value={totalLeads} />
           <KpiCard
             label="engajadas no funil"
@@ -280,6 +316,12 @@ export default async function DashboardPage() {
           />
         </div>
 
+        {/* Funil de vendas — logo abaixo do KPI hero (bloco de maior destaque) */}
+        <CommercialFunnelSection counts={funnelCounts} range={rangeOption} ttfc={ttfcRange} />
+
+        {/* Evolução semanal — tendência + conversão, sempre 4 semanas (fixo) */}
+        <WeeklyFunnelSection weeks={weeklyFunnel} />
+
         {/* Funil completo */}
         <Section
           title="funil completo por status."
@@ -313,7 +355,7 @@ export default async function DashboardPage() {
         )}
 
         {/* Fontes + Renda */}
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-2 gap-8 [&>*]:min-w-0">
           {sourceData.length > 0 && (
             <Section
               title="de onde vêm os leads."
@@ -347,7 +389,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Orçamento + Pontuação */}
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-2 gap-8 [&>*]:min-w-0">
           {orcamentoData.length > 0 && (
             <Section
               title="orçamento declarado."
@@ -401,7 +443,7 @@ export default async function DashboardPage() {
         )}
 
         {/* Qualidade + Atividade */}
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-2 gap-8 [&>*]:min-w-0">
           <section>
             <h2 className="mb-5 text-h3 text-ink">qualidade dos dados.</h2>
             <Card className="space-y-4">
@@ -441,25 +483,27 @@ export default async function DashboardPage() {
                 <p className="text-body text-ink-muted">nenhuma movimentação ainda.</p>
               </Card>
             ) : (
-              <Card className="divide-y divide-line p-0">
-                {recentActivity.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 px-5 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-body text-ink">
-                        {item.leadNickname ?? item.leadName}
-                      </p>
-                      <p className="truncate text-micro text-ink-muted">
-                        {item.fromStageName ?? '—'} → {item.toStageName}
+              <Card className="min-w-0 overflow-hidden p-0">
+                <div className="max-h-[300px] divide-y divide-line overflow-y-auto">
+                  {recentActivity.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 px-5 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-body text-ink">
+                          {item.leadNickname ?? item.leadName}
+                        </p>
+                        <p className="truncate text-micro text-ink-muted">
+                          {item.fromStageName ?? '—'} → {item.toStageName}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-micro text-ink-muted">
+                        {formatDistanceToNow(new Date(item.changedAt), {
+                          locale: ptBR,
+                          addSuffix: true,
+                        })}
                       </p>
                     </div>
-                    <p className="shrink-0 text-micro text-ink-muted">
-                      {formatDistanceToNow(new Date(item.changedAt), {
-                        locale: ptBR,
-                        addSuffix: true,
-                      })}
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </Card>
             )}
           </section>
@@ -534,7 +578,7 @@ function Section({
       <h2 className="text-h3 text-ink">{title}</h2>
       {caption && <p className="mb-5 mt-1 text-micro text-ink-muted">{caption}</p>}
       {!caption && <div className="mb-5" />}
-      <Card>{children}</Card>
+      <Card className="min-w-0 overflow-hidden">{children}</Card>
     </section>
   );
 }

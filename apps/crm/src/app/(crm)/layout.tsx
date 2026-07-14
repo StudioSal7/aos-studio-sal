@@ -29,9 +29,9 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
   const isOwner = auth.role === 'owner';
 
   return (
-    <div className="flex h-screen bg-canvas">
+    <div className="flex h-screen overflow-hidden bg-canvas">
       <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-paper">
-        <div className="flex h-16 items-center border-b border-line px-5">
+        <div className="flex h-16 shrink-0 items-center border-b border-line px-5">
           <Image
             src="/logo.png"
             alt="Studio SAL"
@@ -42,7 +42,7 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
           />
         </div>
 
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
           <NavItem href="/dashboard" label="dashboard." icon={LineChart} />
 
           <CollapsibleNavGroup label="crm">
@@ -73,14 +73,8 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
           </CollapsibleNavGroup>
         </nav>
 
-        <div className="space-y-3 border-t border-line p-4">
+        <div className="shrink-0 space-y-3 border-t border-line p-4">
           {isOwner && <NavItem href="/admin" label="admin." icon={Shield} />}
-          <p className="text-micro text-ink-muted normal-case tracking-normal">
-            <kbd className="mr-1 inline-block border border-line bg-canvas px-1.5 py-0.5 text-[10px]">
-              ⌘K
-            </kbd>
-            para buscar
-          </p>
           <p className="truncate text-micro text-ink-muted normal-case tracking-normal">
             {auth.email}
           </p>
@@ -95,7 +89,7 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
         {children}
       </main>
 

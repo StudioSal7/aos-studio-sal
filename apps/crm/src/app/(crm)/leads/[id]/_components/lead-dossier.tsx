@@ -9,16 +9,26 @@ import type { Lead } from '@repo/db/schema';
 import { labelForLeadEnum } from '@/components/forms/lead-mapping-options';
 import type { LeadAnalysisSummary } from '@/server/queries/commercial';
 import type { LeadFormResponse } from '@/server/queries/forms';
+import type { getLeadRespondiRawAnswers } from '@/server/queries/leads';
+import {
+  buildInstagramLink,
+  buildMailtoLink,
+  buildWhatsAppLink,
+} from '@/server/lib/contact-links/index';
 import { Section, DataRow } from './data-row';
+
+type RespondiAnswers = Awaited<ReturnType<typeof getLeadRespondiRawAnswers>>;
 
 export function LeadDossier({
   lead,
   analyses,
   formResponses,
+  respondiAnswers,
 }: {
   lead: Lead;
   analyses: LeadAnalysisSummary[];
   formResponses: LeadFormResponse[];
+  respondiAnswers: RespondiAnswers;
 }) {
   return (
     <div className="space-y-6">
@@ -26,9 +36,17 @@ export function LeadDossier({
         <Section title="identificação">
           <DataRow label="nome completo" value={lead.name} />
           <DataRow label="apelido" value={lead.nickname} />
-          <DataRow label="e-mail" value={lead.email} />
-          <DataRow label="whatsapp" value={lead.whatsappE164} />
-          <DataRow label="instagram" value={lead.instagramHandle} />
+          <DataRow label="e-mail" value={lead.email} href={buildMailtoLink(lead.email)} />
+          <DataRow
+            label="whatsapp"
+            value={lead.whatsappE164}
+            href={buildWhatsAppLink(lead.whatsappE164)}
+          />
+          <DataRow
+            label="instagram"
+            value={lead.instagramHandle ? `@${lead.instagramHandle}` : null}
+            href={buildInstagramLink(lead.instagramHandle)}
+          />
           <DataRow label="cidade" value={lead.cidade} />
           <DataRow label="estado" value={lead.estado} />
         </Section>
@@ -73,6 +91,8 @@ export function LeadDossier({
       </Section>
 
       <CallDataSection analyses={analyses} />
+
+      {respondiAnswers && <RespondiAnswersSection data={respondiAnswers} />}
 
       <FormResponsesSection responses={formResponses} />
     </div>
@@ -199,6 +219,26 @@ function CallDataSection({ analyses }: { analyses: LeadAnalysisSummary[] }) {
           })}
         </div>
       )}
+    </section>
+  );
+}
+
+// ── Respostas cruas do webhook Respondi (leads sem form_responses) ──────────
+// Preserva o texto literal de cada pergunta, inclusive as sem lead_mapping —
+// ex.: "qual dessas abordagens você sente que tem mais ressonância..."
+
+function RespondiAnswersSection({ data }: { data: NonNullable<RespondiAnswers> }) {
+  return (
+    <section className="border border-line bg-paper p-6">
+      <h2 className="mb-4 text-micro text-ink-muted">respostas da aplicação</h2>
+      <dl className="space-y-3 text-body">
+        {data.answers.map((a, i) => (
+          <div key={i}>
+            <dt className="text-micro text-ink-muted normal-case tracking-normal">{a.title}</dt>
+            <dd className="mt-0.5 whitespace-pre-wrap text-ink">{a.value}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }

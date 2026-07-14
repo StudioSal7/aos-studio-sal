@@ -83,12 +83,16 @@ function KpiCard({
   valueColor?: string;
 }) {
   return (
-    <Card>
+    <Card className="min-w-0 overflow-hidden">
       <div className="flex items-start justify-between gap-2">
         <p className="text-micro text-ink-muted">{label}</p>
         {badge}
       </div>
-      <p className={`mt-3 font-serif text-[32px] leading-[1.15] normal-case tabular-nums tracking-tight ${valueColor ?? 'text-ink'}`}>{value}</p>
+      <p
+        className={`mt-3 break-words text-[26px] font-serif leading-[1.15] normal-case tabular-nums tracking-tight ${valueColor ?? 'text-ink'}`}
+      >
+        {value}
+      </p>
       {note && <p className="mt-1 text-micro text-ink-muted">{note}</p>}
     </Card>
   );
@@ -137,7 +141,7 @@ function Section({ title, caption, children }: { title: string; caption?: string
       <h2 className="text-h3 text-ink">{title}</h2>
       {caption && <p className="mb-5 mt-1 text-micro text-ink-muted">{caption}</p>}
       {!caption && <div className="mb-5" />}
-      <Card>{children}</Card>
+      <Card className="min-w-0 overflow-hidden">{children}</Card>
     </section>
   );
 }
@@ -163,7 +167,7 @@ export default function TrafegoPagoPage() {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-5 gap-4 [&>*]:min-w-0">
           <KpiCard
             label="investimento"
             value={brl(KPIS.investimento)}
@@ -195,7 +199,7 @@ export default function TrafegoPagoPage() {
         </div>
 
         {/* Gráficos de período */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-6 [&>*]:min-w-0">
           <Section title="cpa diário.">
             <CpaDiarioChart />
           </Section>
@@ -207,60 +211,62 @@ export default function TrafegoPagoPage() {
         {/* Tabela de campanhas */}
         <section>
           <h2 className="mb-5 text-h3 text-ink">campanhas.</h2>
-          <Card className="p-0">
-            <table className="w-full">
-              <thead className="border-b border-line">
-                <tr>
-                  <th className="px-5 py-3 text-left text-micro text-ink-muted">campanha</th>
-                  <th className="px-4 py-3 text-left text-micro text-ink-muted">tipo</th>
-                  <th className="px-4 py-3 text-right text-micro text-ink-muted">invest. ↓</th>
-                  <th className="px-4 py-3 text-right text-micro text-ink-muted">vendas ↕</th>
-                  <th className="px-4 py-3 text-right text-micro text-ink-muted">cpa ↕</th>
-                  <th className="px-4 py-3 text-right text-micro text-ink-muted">ctr ↕</th>
-                  <th className="px-4 py-3 text-right text-micro text-ink-muted">roas ↕</th>
-                  <th className="px-4 py-3 text-right text-micro text-ink-muted">hook ↕</th>
-                  <th className="px-4 py-3 text-right text-micro text-ink-muted">hold ↕</th>
-                </tr>
-              </thead>
-              <tbody>
-                {CAMPANHAS.map((c) => (
-                  <tr key={c.nome} className="border-b border-line last:border-0">
-                    <td className="max-w-xs truncate px-5 py-3 text-[12px] normal-case tracking-normal text-ink">
-                      {c.nome}
-                    </td>
-                    <td className="px-4 py-3">
-                      <TipoBadge tipo={c.tipo} />
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
-                      {brl(c.investimento)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
-                      {c.vendas}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
-                      {brl(c.cpa)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
-                      {c.ctr}%
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[12px] font-medium text-ink">
-                      {c.roas}x
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
-                      {c.hook}%
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
-                      {c.hold}%
-                    </td>
+          <Card className="min-w-0 overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px]">
+                <thead className="border-b border-line">
+                  <tr>
+                    <th className="px-5 py-3 text-left text-micro text-ink-muted">campanha</th>
+                    <th className="px-4 py-3 text-left text-micro text-ink-muted">tipo</th>
+                    <th className="px-4 py-3 text-right text-micro text-ink-muted">invest. ↓</th>
+                    <th className="px-4 py-3 text-right text-micro text-ink-muted">vendas ↕</th>
+                    <th className="px-4 py-3 text-right text-micro text-ink-muted">cpa ↕</th>
+                    <th className="px-4 py-3 text-right text-micro text-ink-muted">ctr ↕</th>
+                    <th className="px-4 py-3 text-right text-micro text-ink-muted">roas ↕</th>
+                    <th className="px-4 py-3 text-right text-micro text-ink-muted">hook ↕</th>
+                    <th className="px-4 py-3 text-right text-micro text-ink-muted">hold ↕</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {CAMPANHAS.map((c) => (
+                    <tr key={c.nome} className="border-b border-line last:border-0">
+                      <td className="max-w-xs truncate px-5 py-3 text-[12px] normal-case tracking-normal text-ink">
+                        {c.nome}
+                      </td>
+                      <td className="px-4 py-3">
+                        <TipoBadge tipo={c.tipo} />
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
+                        {brl(c.investimento)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
+                        {c.vendas}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
+                        {brl(c.cpa)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
+                        {c.ctr}%
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-[12px] font-medium text-ink">
+                        {c.roas}x
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
+                        {c.hook}%
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-[12px] text-ink">
+                        {c.hold}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         </section>
 
         {/* Funil de Vídeo + Ranking de Criativos */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-6 [&>*]:min-w-0">
           <Section title="funil de vídeo." caption="retenção acumulada por checkpoint do vídeo.">
             <div className="space-y-2">
               {FUNIL.map((row, i) => {

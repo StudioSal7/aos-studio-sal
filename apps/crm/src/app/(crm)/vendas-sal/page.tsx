@@ -1,5 +1,3 @@
-import type { Route } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { toZonedTime } from 'date-fns-tz';
 import { format } from 'date-fns';
@@ -8,6 +6,7 @@ import { requireAuth } from '@/server/auth';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PeriodFilter } from '@/components/ui/period-filter';
 import { CHART_COLORS } from '@/components/charts/chart-theme';
 import { HorizontalBarChart } from '@/components/charts/horizontal-bar-chart';
 import { StackedBarChart } from '@/components/charts/stacked-bar-chart';
@@ -183,21 +182,7 @@ export default async function VendasSalPage({
   return (
     <div className="flex flex-col">
       <PageHeader title="vendas sal.">
-        <div className="flex items-center gap-1">
-          {RANGE_OPTIONS.map((opt) => (
-            <Link
-              key={opt.value}
-              href={`/vendas-sal?range=${opt.value}` as Route<string>}
-              className={`px-3 py-1.5 text-micro normal-case tracking-normal ${
-                range === opt.value
-                  ? 'bg-canvas text-ink'
-                  : 'text-ink-muted hover:bg-canvas hover:text-ink'
-              }`}
-            >
-              {opt.label}
-            </Link>
-          ))}
-        </div>
+        <PeriodFilter current={range} options={RANGE_OPTIONS} />
       </PageHeader>
 
       <div className="space-y-10 p-8">
