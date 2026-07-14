@@ -10,22 +10,19 @@ function createDb() {
     throw new Error('DATABASE_URL is required');
   }
 
-  // Pool pequeno de propósito: na Vercel, CADA invocação serverless cria seu
-  // próprio pool. Com a conexão DIRETA do Supabase (porta 5432, max_connections
-  // = 60), poucas invocações concorrentes × max:10 estouravam o limite →
-  // Postgres recusa com `53300: sorry, too many clients already`, que a UI vê
-  // como "Connection closed" / server-side exception intermitente no dashboard
-  // (que dispara ~23 queries por render). Medido: max:10 × 12 invocações = 157
-  // falhas; max:3 × 12 = 0 falhas. `idle_timeout` devolve conexões ociosas das
-  // instâncias quentes, baixando o uso em regime permanente.
-  //
-  // ⚠️ Correção definitiva p/ serverless é usar o POOLER do Supabase (Supavisor
-  // transaction mode, porta 6543) na DATABASE_URL da Vercel — o código já está
-  // pronto (`prepare: false`, exigido pelo pooler). Migrations (db:push/migrate)
-  // continuam pela conexão direta 5432.
+  // ⚠️ NÃO baixar `max` abaixo de ~10. O Vercel usa o POOLER do Supabase
+  // (Supavisor transaction mode, 6543). O `postgres.js` faz PIPELINING de
+  // queries quando há mais queries concorrentes que conexões no pool; contra o
+  // pooler em transaction mode, pipeline PROFUNDO (max baixo + muitas queries
+  // simultâneas, como o dashboard ~18) faz algumas queries TRAVAREM pra sempre
+  // → a função estoura o `maxDuration` (FUNCTION_INVOCATION_TIMEOUT, visto como
+  // "Connection closed" no cliente). Reproduzido: 18 queries no pooler com
+  // max:3 → 3 travam; max:5/10/20 → todas OK. `prepare: false` é OBRIGATÓRIO
+  // pro transaction pooler. Migrations (db:push/migrate) usam a conexão direta
+  // 5432. Detalhe completo em docs/debug-dashboard-timeout.md.
   const client = postgres(databaseUrl, {
     prepare: false,
-    max: 3,
+    max: 10,
     idle_timeout: 20,
   });
 
