@@ -25,6 +25,8 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `/f/[slug]` | `app/f/[slug]/page.tsx` | **Público** (fora do auth) — runtime do formulário |
 | `/login` | `app/login/page.tsx` | Página de login |
 | `/auth/callback` | `app/auth/callback/route.ts` | Supabase OAuth callback |
+| `POST /api/google/oauth/start` | `app/api/google/oauth/start/route.ts` | Owner only (auth manual, JSON 401/403) — inicia OAuth Google, state em cookie httpOnly |
+| `GET /api/google/oauth/callback` | `app/api/google/oauth/callback/route.ts` | Retorno do consent Google — valida state+owner, upsert em `google_accounts`, redirect `/admin?google=` |
 | `POST /api/webhooks/leads/respondi` | `app/api/webhooks/leads/respondi/route.ts` | Entrada de leads (Respondi) |
 | `POST /api/forms/submit` | `app/api/forms/submit/route.ts` | **Público** — submit de formulário self-hosted → cria lead |
 | `GET /api/crons/meeting-prompt` | `app/api/crons/meeting-prompt/route.ts` | */15 min |
@@ -38,7 +40,8 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | Arquivo | Actions |
 |---|---|
 | `server/actions/leads.ts` | `updateLeadStageAction`, `assignResponsavelAction`, `updateLeadFieldsAction`, `softDeleteLeadAction` |
-| `server/actions/meetings.ts` | `scheduleMeetingAction`, `rescheduleMeetingAction`, `completeMeetingAction` |
+| `server/actions/meetings.ts` | `scheduleMeetingAction`, `rescheduleMeetingAction`, `cancelMeetingAction`, `completeMeetingAction` — todas propagam pro Google Calendar best-effort (`googleSync` no retorno) |
+| `server/actions/google-calendar.ts` | `getGoogleWeekAgendaAction` (qualquer role), `disconnectGoogleAccountAction` (**owner-only**) |
 | `server/actions/users.ts` | `inviteUserAction` |
 | `server/actions/search.ts` | `searchLeadsForPalette(query)` — reusa `searchLeads` do query builder; usado pelo Cmd+K |
 | `server/actions/forms.ts` | **owner-only** — `createFormAction`, `updateFormAction`, `deleteFormAction`, `duplicateFormAction`, `addFieldAction`, `updateFieldAction`, `deleteFieldAction`, `reorderFieldsAction` |
@@ -60,6 +63,7 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `server/lib/legacy-csv-parser/` | Puro + fixtures | 32 passando |
 | `server/lib/dedup-matcher/` | Integração DB | 8 (skip sem DATABASE_URL) |
 | `server/lib/search-query-builder/` | Puro | Sem testes dedicados |
+| `server/lib/google-calendar/` | Puro (client/payload/token/week-window/events-by-day) + `account.ts` usa DB | 27 passando (fetch mockado no client) |
 | `server/audit-writer.ts` | Usa DB | Sem testes dedicados |
 
 ---

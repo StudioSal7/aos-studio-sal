@@ -1,5 +1,6 @@
 import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { meetingStatusEnum } from './enums';
+import { googleAccounts } from './google-accounts';
 import { leads } from './leads';
 
 export const meetings = pgTable(
@@ -14,6 +15,11 @@ export const meetings = pgTable(
     status: meetingStatusEnum('status').notNull().default('agendada'),
     needsConfirmation: boolean('needs_confirmation').notNull().default(false),
     notesPostCall: text('notes_post_call'),
+    // Vínculo com o evento na Google Agenda (mão única CRM→Google).
+    googleEventId: text('google_event_id'),
+    googleAccountId: uuid('google_account_id').references(() => googleAccounts.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
