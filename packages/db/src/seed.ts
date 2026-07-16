@@ -14,6 +14,11 @@ import { db } from './client';
 import { leadLossReasons, leadSources, leadStages, roleplayScenarios } from './schema/index';
 
 const STAGES = [
+  // Stage de entrada FRIO do Direcionador (bio-quiz). Lead de link-na-bio é mais
+  // frio/volumoso que aplicação do Respondi — fica numa coluna separada pra triagem,
+  // pra não poluir o KPI do funil principal. position 0 = aparece antes das demais
+  // sem renumerar o board existente (1–11). Renata pode reposicionar.
+  { slug: 'bio_quiz_novo', displayName: 'Direcionador — novo', position: 0, kind: 'open' as const },
   { slug: 'application_received', displayName: 'Aplicação recebida', position: 1, kind: 'open' as const },
   { slug: 'under_review', displayName: 'Em análise', position: 2, kind: 'open' as const },
   { slug: 'qualified', displayName: 'Qualificado', position: 3, kind: 'open' as const },
@@ -48,6 +53,7 @@ const SOURCES = [
   { slug: 'tiktok', displayName: 'TikTok' },
   { slug: 'podcast', displayName: 'Podcast' },
   { slug: 'formulario', displayName: 'Formulário (web)' },
+  { slug: 'bio-quiz', displayName: 'Direcionador (link-na-bio)' },
   { slug: 'outro', displayName: 'Outro' },
 ];
 
