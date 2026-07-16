@@ -1,0 +1,11 @@
+-- Habilita RLS em bio_rate_limit — tabela criada na migration 0012, DEPOIS da
+-- 0011 (que ligou RLS nas 21 tabelas públicas da época), então ficou de fora
+-- e reabriu o mesmo buraco que a 0011 fechou: sem RLS, o Data API do Supabase
+-- (PostgREST) expõe a tabela ao role anon com os grants default do schema
+-- public — leitura/escrita do contador de rate-limit (e dos IPs capturados)
+-- por qualquer chamador com a anon key do site.
+-- Seguro: o app acessa via service_role/conexão direta (ignora RLS); só o
+-- acesso anônimo externo passa a ser negado. Sem policies permissivas —
+-- deny-all para anon, mesmo padrão da 0011.
+--> statement-breakpoint
+ALTER TABLE "bio_rate_limit" ENABLE ROW LEVEL SECURITY;
