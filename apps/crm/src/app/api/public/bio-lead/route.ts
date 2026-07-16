@@ -8,16 +8,24 @@
  *
  * Anti-spam (obrigatório antes de ir pro ar):
  *   - Honeypot: campo oculto `empresa`. Se vier preenchido, é bot → 200 fake, sem gravar.
- *   - Rate-limit por IP (janela fixa no Postgres).
+ *   - Rate-limit por IP (janela deslizante ponderada no Postgres — ver
+ *     server/lib/rate-limit). Chave = IP CONFIÁVEL (`x-real-ip`, injetado pela
+ *     Vercel), nunca o `x-forwarded-for` cru — esse campo o cliente controla.
  *   - Origin allowlist + x-bio-token são CAMADAS EXTRAS (token vai no bundle do client;
  *     Origin se forja fora do browser) — a defesa real é honeypot + rate-limit.
  *
  * Dedup: se já existe lead com mesmo email/WhatsApp, ENRIQUECE o existente
- * (append da qualificação no `notes` + seta produtoInteresseId se vazio) — nunca
- * duplica nem dropa as respostas.
+ * (append da qualificação no `notes` + preenche campos vazios — nunca sobrescreve
+ * campo já preenchido, nunca aceita requiresAttention vindo do cliente pra um lead
+ * de terceiro) — nunca duplica nem dropa as respostas. Ver server/lib/bio-lead-guard.
+ *
+ * Resposta: SEMPRE `200 { ok: true }` no caminho de sucesso (lead novo, enriquecido
+ * ou honeypot) — não diferencia "novo" de "já existia" nem devolve leadId, pra não
+ * virar oráculo de quem já é lead (ver server/lib/bio-lead-guard).
  *
  * Stage de entrada: slug vem de BIO_LEAD_STAGE_SLUG (default `bio_quiz_novo`),
- * pra não poluir o funil principal. Fonte do lead: slug `bio-quiz` (seedado).
+ * pra não poluir o funil principal. Fonte do lead: allowlist fixa em
+ * bio-lead-guard (hoje só `bio-quiz`) — o cliente NÃO escolhe a fonte livre.
  */
 
 import { eq } from 'drizzle-orm';
@@ -27,6 +35,13 @@ import * as schema from '@repo/db/schema';
 import { findDuplicateLead } from '@/server/lib/dedup-matcher/index';
 import { normalizeWhatsapp } from '@/server/lib/whatsapp-normalizer/index';
 import { checkRateLimit } from '@/server/lib/rate-limit/index';
+import {
+  buildEnrichPatch,
+  findPayloadCapViolation,
+  getTrustedClientIp,
+  resolveAllowedSourceSlug,
+  type ExistingLeadEnrichable,
+} from '@/server/lib/bio-lead-guard/index';
 
 export const runtime = 'nodejs';
 
@@ -81,12 +96,6 @@ export async function OPTIONS(request: NextRequest) {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function getClientIp(request: NextRequest): string {
-  const xff = request.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]!.trim();
-  return request.headers.get('x-real-ip') ?? 'unknown';
-}
 
 function originAllowed(request: NextRequest): boolean {
   const allowed = allowedOrigins();
@@ -150,9 +159,9 @@ export async function POST(request: NextRequest) {
     return json({ ok: true }, 200, origin);
   }
 
-  // 5. Rate-limit por IP
+  // 5. Rate-limit por IP CONFIÁVEL (nunca o x-forwarded-for cru — ver header do arquivo)
   const rate = await checkRateLimit(db, {
-    key: getClientIp(request),
+    key: getTrustedClientIp(request.headers),
     limit: RATE_LIMIT,
     windowSeconds: RATE_WINDOW_SECONDS,
   });
@@ -160,7 +169,7 @@ export async function POST(request: NextRequest) {
     return json({ error: 'rate_limited' }, 429, origin);
   }
 
-  // 6. Validação mínima + normalização
+  // 6. Validação mínima + cap de tamanho + normalização
   const nome = payload.nome?.trim();
   const email = payload.email?.trim().toLowerCase();
   const wppResult = normalizeWhatsapp(payload.whatsapp);
@@ -168,6 +177,16 @@ export async function POST(request: NextRequest) {
   if (!nome || !email || !wppResult.ok) {
     return json({ error: 'invalid_payload' }, 400, origin);
   }
+
+  const capViolation = findPayloadCapViolation({ ...payload, nome, email });
+  if (capViolation) {
+    return json(
+      { error: 'payload_too_large', field: capViolation.field, limit: capViolation.limit },
+      400,
+      origin,
+    );
+  }
+
   const whatsappE164 = wppResult.e164;
 
   const now = new Date();
@@ -177,8 +196,9 @@ export async function POST(request: NextRequest) {
     faturamento && faturamento !== 'prefiro_nao' ? faturamento : undefined;
   const isAgendar = payload.intencao === 'agendar';
 
-  // 7. Resolve fonte (por slug) e produto recomendado (por slug), best-effort
-  const sourceSlug = payload.leadSourceSlug ?? 'bio-quiz';
+  // 7. Resolve fonte (allowlist fixa — cliente não escolhe livre) e produto
+  // recomendado (por slug), best-effort
+  const sourceSlug = resolveAllowedSourceSlug(payload.leadSourceSlug);
   const [source] = await db
     .select({ id: schema.leadSources.id })
     .from(schema.leadSources)
@@ -204,44 +224,58 @@ export async function POST(request: NextRequest) {
   );
 
   if (dup.match) {
-    const [existing] = await db
+    const [existingRow] = await db
       .select({
         notes: schema.leads.notes,
         produtoInteresseId: schema.leads.produtoInteresseId,
+        rendaFaixa: schema.leads.rendaFaixa,
+        utmSource: schema.leads.utmSource,
+        utmMedium: schema.leads.utmMedium,
+        utmCampaign: schema.leads.utmCampaign,
+        utmTerm: schema.leads.utmTerm,
+        utmContent: schema.leads.utmContent,
       })
       .from(schema.leads)
       .where(eq(schema.leads.id, dup.leadId))
       .limit(1);
 
-    const mergedNotes = existing?.notes
-      ? `${existing.notes}\n\n${notesBlock}`
-      : notesBlock;
+    const existing: ExistingLeadEnrichable = existingRow ?? {
+      notes: null,
+      produtoInteresseId: null,
+      rendaFaixa: null,
+      utmSource: null,
+      utmMedium: null,
+      utmCampaign: null,
+      utmTerm: null,
+      utmContent: null,
+    };
+
+    const mergedNotes = existing.notes ? `${existing.notes}\n\n${notesBlock}` : notesBlock;
+
+    // Só PREENCHE campo vazio, nunca sobrescreve — e nunca inclui
+    // requiresAttention: um chamador público não pode empurrar o lead de
+    // outra pessoa pra fila de atenção só alegando "quero agendar". Essa
+    // intenção já fica registrada no notes (buildNotes acima).
+    const enrichPatch = buildEnrichPatch(existing, {
+      produtoInteresseId,
+      rendaFaixa,
+      utmSource: utm.utm_source ?? undefined,
+      utmMedium: utm.utm_medium ?? undefined,
+      utmCampaign: utm.utm_campaign ?? undefined,
+      utmTerm: utm.utm_term ?? undefined,
+      utmContent: utm.utm_content ?? undefined,
+    });
 
     await db
       .update(schema.leads)
       .set({
         notes: mergedNotes,
-        // só preenche o produto se ainda estiver vazio (não sobrescreve)
-        produtoInteresseId: existing?.produtoInteresseId ?? produtoInteresseId,
-        rendaFaixa,
-        // NÃO sobrescreve a fonte de um lead existente — preserva a atribuição
-        // original (ex.: lead que veio do Respondi). O toque do bio-quiz fica no notes.
-        utmSource: utm.utm_source ?? undefined,
-        utmMedium: utm.utm_medium ?? undefined,
-        utmCampaign: utm.utm_campaign ?? undefined,
-        utmTerm: utm.utm_term ?? undefined,
-        utmContent: utm.utm_content ?? undefined,
-        ...(isAgendar
-          ? {
-              requiresAttention: true,
-              requiresAttentionReason: 'Pediu agendamento via Direcionador',
-            }
-          : {}),
+        ...enrichPatch,
         updatedAt: now,
       })
       .where(eq(schema.leads.id, dup.leadId));
 
-    return json({ ok: true, duplicate: true, leadId: dup.leadId }, 200, origin);
+    return json({ ok: true }, 200, origin);
   }
 
   // 9. Novo lead — resolve o stage de entrada por slug (env, default frio)
@@ -253,6 +287,12 @@ export async function POST(request: NextRequest) {
     .limit(1);
 
   if (!stage) {
+    // Loud de propósito: o caminho de enrich (acima) NÃO passa por aqui, então
+    // testar o endpoint com um e-mail que já é lead esconde este erro — só um
+    // visitante NOVO revela. Sem log claro, isso quebra em silêncio em prod.
+    console.error(
+      `[bio-lead] stage_not_seeded: slug '${stageSlug}' (de BIO_LEAD_STAGE_SLUG ou default) não existe em lead_stages — rode pnpm db:seed.`,
+    );
     return json({ error: 'stage_not_seeded' }, 500, origin);
   }
 
@@ -286,5 +326,5 @@ export async function POST(request: NextRequest) {
     return json({ error: 'insert_failed' }, 500, origin);
   }
 
-  return json({ ok: true, leadId: inserted.id }, 201, origin);
+  return json({ ok: true }, 200, origin);
 }
