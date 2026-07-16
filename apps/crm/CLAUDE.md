@@ -21,6 +21,7 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `/admin/formularios` | `(crm)/admin/formularios/page.tsx` | Owner only — lista de formulários + criar |
 | `/admin/formularios/[id]` | `(crm)/admin/formularios/[id]/page.tsx` | Owner only — editor (builder dnd + autosave) |
 | `/admin/formularios/[id]/respostas` | `(crm)/admin/formularios/[id]/respostas/page.tsx` | Owner only — respostas + link p/ lead |
+| `/admin/produtos` | `(crm)/admin/produtos/page.tsx` | Owner only — catálogo de produtos (CRUD + ativar/desativar) |
 | `/f/[slug]` | `app/f/[slug]/page.tsx` | **Público** (fora do auth) — runtime do formulário |
 | `/login` | `app/login/page.tsx` | Página de login |
 | `/auth/callback` | `app/auth/callback/route.ts` | Supabase OAuth callback |
@@ -41,6 +42,7 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `server/actions/users.ts` | `inviteUserAction` |
 | `server/actions/search.ts` | `searchLeadsForPalette(query)` — reusa `searchLeads` do query builder; usado pelo Cmd+K |
 | `server/actions/forms.ts` | **owner-only** — `createFormAction`, `updateFormAction`, `deleteFormAction`, `duplicateFormAction`, `addFieldAction`, `updateFieldAction`, `deleteFieldAction`, `reorderFieldsAction` |
+| `server/actions/products.ts` | **owner-only** — `createProductAction`, `updateProductAction`, `setProductActiveAction` |
 
 ---
 

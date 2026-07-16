@@ -41,11 +41,22 @@ describe('validateStageTransition', () => {
     expect(result.reason).toBe('valor_e_forma_required');
   });
 
-  it('permite transição para paid com valor e forma', () => {
+  it('bloqueia transição para paid sem produto vinculado', () => {
+    const result = validateStageTransition('won', 'paid', {
+      valorProposto: '5000',
+      formaPagamentoNegociada: 'pix',
+    });
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.reason).toBe('produto_required');
+  });
+
+  it('permite transição para paid com valor, forma e produto', () => {
     expect(
       validateStageTransition('won', 'paid', {
         valorProposto: '5000',
         formaPagamentoNegociada: 'pix',
+        produtoFechadoId: 'uuid-produto',
       }),
     ).toEqual({ valid: true });
   });

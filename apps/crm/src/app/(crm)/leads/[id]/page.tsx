@@ -11,6 +11,7 @@ import {
 } from '@/server/queries/leads';
 import { getLeadFormResponses } from '@/server/queries/forms';
 import { getAnalysesForLead } from '@/server/queries/commercial';
+import { getProductById } from '@/server/queries/products';
 import {
   buildInstagramLink,
   buildMailtoLink,
@@ -37,18 +38,20 @@ export default async function LeadDetailPage({
   const lead = await getLeadById(id);
   if (!lead) notFound();
 
-  const [history, stages, meetings, formResponses, analyses, respondiAnswers] = await Promise.all([
-    getLeadStageHistory(id),
-    getAllStages(),
-    db
-      .select()
-      .from(schema.meetings)
-      .where(eq(schema.meetings.leadId, id))
-      .orderBy(desc(schema.meetings.scheduledAt)),
-    getLeadFormResponses(id),
-    getAnalysesForLead(id),
-    getLeadRespondiRawAnswers(id),
-  ]);
+  const [history, stages, meetings, formResponses, analyses, respondiAnswers, produtoFechado] =
+    await Promise.all([
+      getLeadStageHistory(id),
+      getAllStages(),
+      db
+        .select()
+        .from(schema.meetings)
+        .where(eq(schema.meetings.leadId, id))
+        .orderBy(desc(schema.meetings.scheduledAt)),
+      getLeadFormResponses(id),
+      getAnalysesForLead(id),
+      getLeadRespondiRawAnswers(id),
+      lead.produtoFechadoId ? getProductById(lead.produtoFechadoId) : Promise.resolve(null),
+    ]);
 
   const stageMap = new Map(stages.map((s) => [s.id, s]));
   const currentStage = stageMap.get(lead.stageId);
@@ -150,6 +153,7 @@ export default async function LeadDetailPage({
         comercial={
           <div className="max-w-xl">
             <Section title="comercial">
+              <DataRow label="produto fechado" value={produtoFechado?.displayName ?? null} />
               <DataRow
                 label="valor proposto"
                 value={lead.valorProposto ? `R$ ${lead.valorProposto}` : null}

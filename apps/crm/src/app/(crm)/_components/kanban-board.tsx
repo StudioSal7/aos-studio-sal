@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/sheet';
 import { ActionFeedback, useActionFeedback } from '@/components/ui/action-feedback';
 import type { FirstContactSignal } from '@/server/lib/first-contact-urgency';
+import { reaisInputFromCents } from '@/lib/money';
 import { KanbanColumn } from './kanban-column';
 import { LeadCard } from './lead-card';
 import { LeadQuickView } from './lead-quick-view';
@@ -69,14 +70,22 @@ export type LossReason = {
   displayName: string;
 };
 
+export type ActiveProduct = {
+  id: string;
+  displayName: string;
+  valorCents: number | null;
+};
+
 export function KanbanBoard({
   stages,
   leads: initialLeads,
   lossReasons,
+  products,
 }: {
   stages: KanbanStage[];
   leads: KanbanLead[];
   lossReasons: LossReason[];
+  products: ActiveProduct[];
 }) {
   const [optimisticLeads, addOptimisticMove] = useOptimistic(
     initialLeads,
@@ -165,6 +174,7 @@ export function KanbanBoard({
       <TransitionSheet
         transition={pendingTransition}
         lossReasons={lossReasons}
+        products={products}
         onClose={() => setPendingTransition(null)}
         onConfirm={(extras) => {
           if (!pendingTransition) return;
@@ -189,16 +199,19 @@ type TransitionExtras = {
   motivoPerdaId?: string;
   valorProposto?: string;
   formaPagamentoNegociada?: string;
+  produtoFechadoId?: string;
 };
 
 function TransitionSheet({
   transition,
   lossReasons,
+  products,
   onClose,
   onConfirm,
 }: {
   transition: PendingTransition | null;
   lossReasons: LossReason[];
+  products: ActiveProduct[];
   onClose: () => void;
   onConfirm: (extras: TransitionExtras) => void;
 }) {
@@ -228,8 +241,9 @@ function TransitionSheet({
         )}
         {isPaid && !isLost && (
           <PaidForm
-            onConfirm={(valorProposto, formaPagamentoNegociada) =>
-              onConfirm({ valorProposto, formaPagamentoNegociada })
+            products={products}
+            onConfirm={(valorProposto, formaPagamentoNegociada, produtoFechadoId) =>
+              onConfirm({ valorProposto, formaPagamentoNegociada, produtoFechadoId })
             }
             onCancel={onClose}
           />
@@ -289,25 +303,51 @@ function LostForm({
 }
 
 function PaidForm({
+  products,
   onConfirm,
   onCancel,
 }: {
-  onConfirm: (valorProposto: string, formaPagamentoNegociada: string) => void;
+  products: ActiveProduct[];
+  onConfirm: (valorProposto: string, formaPagamentoNegociada: string, produtoFechadoId: string) => void;
   onCancel: () => void;
 }) {
+  const [produtoId, setProdutoId] = useState('');
   const [valor, setValor] = useState('');
   const [forma, setForma] = useState('');
+
+  function handleProdutoChange(id: string) {
+    setProdutoId(id);
+    const produto = products.find((p) => p.id === id);
+    // Preenche a partir do produto, mas o valor segue editável (desconto/custom).
+    if (produto) setValor(reaisInputFromCents(produto.valorCents));
+  }
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (valor && forma) onConfirm(valor, forma);
+        if (valor && forma && produtoId) onConfirm(valor, forma, produtoId);
       }}
       className="flex flex-1 flex-col"
     >
       <SheetBody>
         <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="produto">Produto</Label>
+            <Select
+              id="produto"
+              required
+              value={produtoId}
+              onChange={(e) => handleProdutoChange(e.target.value)}
+            >
+              <option value="">Selecione...</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.displayName}
+                </option>
+              ))}
+            </Select>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="valor">Valor (R$)</Label>
             <Input
@@ -344,7 +384,7 @@ function PaidForm({
         <Button variant="ghost" size="sm" onClick={onCancel}>
           cancelar
         </Button>
-        <Button type="submit" variant="solid" size="sm" disabled={!valor || !forma}>
+        <Button type="submit" variant="solid" size="sm" disabled={!valor || !forma || !produtoId}>
           confirmar
         </Button>
       </SheetFooter>

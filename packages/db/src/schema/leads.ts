@@ -63,6 +63,9 @@ export const leads = pgTable(
     tempoNegocio: text('tempo_negocio'),
     ehClienteAnterior: boolean('eh_cliente_anterior').notNull().default(false),
     produtoInteresseId: uuid('produto_interesse_id').references(() => products.id),
+    // Produto efetivamente fechado — distinto do interesse pré-venda acima
+    // (upsell/downsell podem divergir). Preenchido no fechamento (stage 'paid').
+    produtoFechadoId: uuid('produto_fechado_id').references(() => products.id),
 
     // Comercial
     stageId: uuid('stage_id')
