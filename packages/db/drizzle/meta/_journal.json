@@ -85,6 +85,20 @@
       "when": 1783967984899,
       "tag": "0011_enable_rls_public_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784220944898,
+      "tag": "0012_demonic_nemesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784222431938,
+      "tag": "0013_enable_rls_bio_rate_limit",
+      "breakpoints": true
     }
   ]
 }
