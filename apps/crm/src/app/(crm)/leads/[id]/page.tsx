@@ -12,6 +12,7 @@ import {
 import { getLeadFormResponses } from '@/server/queries/forms';
 import { getAnalysesForLead } from '@/server/queries/commercial';
 import { getProductById } from '@/server/queries/products';
+import { getContractsForLead } from '@/server/queries/contracts';
 import {
   buildInstagramLink,
   buildMailtoLink,
@@ -24,6 +25,7 @@ import { LeadDossier } from './_components/lead-dossier';
 import { LeadNotesForm } from './_components/lead-notes-form';
 import { ScheduleMeetingForm } from './_components/schedule-meeting-form';
 import { SdrAnalysisButton } from './_components/sdr-analysis-button';
+import { GenerateContractSection } from './_components/generate-contract-section';
 import { Section, DataRow } from './_components/data-row';
 
 // Porta 1 do SDR puxa a conversa via Evolution + 2 chamadas GPT-4o (síncrono).
@@ -38,7 +40,7 @@ export default async function LeadDetailPage({
   const lead = await getLeadById(id);
   if (!lead) notFound();
 
-  const [history, stages, meetings, formResponses, analyses, respondiAnswers, produtoFechado] =
+  const [history, stages, meetings, formResponses, analyses, respondiAnswers, produtoFechado, contracts] =
     await Promise.all([
       getLeadStageHistory(id),
       getAllStages(),
@@ -51,6 +53,7 @@ export default async function LeadDetailPage({
       getAnalysesForLead(id),
       getLeadRespondiRawAnswers(id),
       lead.produtoFechadoId ? getProductById(lead.produtoFechadoId) : Promise.resolve(null),
+      getContractsForLead(id),
     ]);
 
   const stageMap = new Map(stages.map((s) => [s.id, s]));
@@ -151,7 +154,7 @@ export default async function LeadDetailPage({
           />
         }
         comercial={
-          <div className="max-w-xl">
+          <div className="max-w-xl space-y-6">
             <Section title="comercial">
               <DataRow label="produto fechado" value={produtoFechado?.displayName ?? null} />
               <DataRow
@@ -179,6 +182,12 @@ export default async function LeadDetailPage({
               <DataRow label="tipo da próxima ação" value={lead.nextActionType} />
               <DataRow label="notas próxima ação" value={lead.nextActionNotes} />
             </Section>
+
+            <GenerateContractSection
+              leadId={id}
+              isPaid={currentStage?.slug === 'paid'}
+              contracts={contracts}
+            />
           </div>
         }
         historico={
