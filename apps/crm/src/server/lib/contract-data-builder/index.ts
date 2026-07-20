@@ -19,7 +19,7 @@ const FORMA_PAGAMENTO_LABELS: Record<string, string> = {
 };
 
 export type ContractLeadInput = {
-  name: string;
+  name: string | null;
   nickname?: string | null;
   email?: string | null;
   whatsappE164?: string | null;
