@@ -16,6 +16,8 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `/revisao` | `(crm)/revisao/page.tsx` | needs_manual_review=true |
 | `/calendario` | `(crm)/calendario/page.tsx` | Meetings da semana atual |
 | `/dashboard` | `(crm)/dashboard/page.tsx` | Pipeline bruto + métricas |
+| `/trafego` | `(crm)/trafego/page.tsx` | Meta Ads real (3 vistas: decisão/curva/tendência, `?vista=&segmento=`) |
+| `/vendas-sal` | `(crm)/vendas-sal/page.tsx` | Owner only — vendas Hotmart por UTM |
 | `/saude` | `(crm)/saude/page.tsx` | requires_attention=true |
 | `/admin` | `(crm)/admin/page.tsx` | Owner only |
 | `/admin/formularios` | `(crm)/admin/formularios/page.tsx` | Owner only — lista de formulários + criar |
@@ -32,6 +34,7 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `GET /api/crons/meeting-prompt` | `app/api/crons/meeting-prompt/route.ts` | */15 min |
 | `GET /api/crons/sla-check` | `app/api/crons/sla-check/route.ts` | Diário 11h UTC (8h SP) |
 | `GET /api/crons/data-quality` | `app/api/crons/data-quality/route.ts` | Segunda 11h UTC (8h SP) |
+| `GET /api/crons/meta-sync` | `app/api/crons/meta-sync/route.ts` | Diário 9h UTC (6h SP) — re-upserta insights Meta D-7→D-1, `maxDuration=300` |
 
 ---
 
@@ -47,6 +50,7 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `server/actions/forms.ts` | **owner-only** — `createFormAction`, `updateFormAction`, `deleteFormAction`, `duplicateFormAction`, `addFieldAction`, `updateFieldAction`, `deleteFieldAction`, `reorderFieldsAction` |
 | `server/actions/products.ts` | **owner-only** — `createProductAction`, `updateProductAction`, `setProductActiveAction` |
 | `server/actions/metric-targets.ts` | **owner-only** — `upsertMetricTargetAction`, `deleteMetricTargetAction` (metas do dashboard) |
+| `server/actions/trafego.ts` | `createAccountEventAction` (qualquer papel — log de mudanças da conta Meta), `deleteAccountEventAction` (owner) |
 
 ---
 
@@ -68,6 +72,14 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `server/lib/search-query-builder/` | Puro | Sem testes dedicados |
 | `server/lib/google-calendar/` | Puro (client/payload/token/week-window/events-by-day) + `account.ts` usa DB | 27 passando (fetch mockado no client) |
 | `server/audit-writer.ts` | Usa DB | Sem testes dedicados |
+| `server/lib/meta-client/` | Puro (fetch injetável) | 5 passando — paginação `paging.next`, abort ≥80% uso, prefixo `act_` |
+| `server/lib/meta-insights-mapper/` | Puro | 16 passando — precedência de compra, cents, zero≠null, fontes de vídeo/LPV |
+| `server/lib/meta-sync/` | Usa DB (upsert `excluded.*` chunked) | 4 puros + 2 integração (skip sem DATABASE_URL) |
+| `server/lib/ads-windows/` | Puro | 8 passando — janelas D-3, WoW, móveis, TZ SP |
+| `server/lib/ads-metrics/` | Puro | 10 passando — Σ/Σ anti média-das-médias, div-zero→null, único lar das fórmulas |
+| `server/lib/ads-segment/` | Puro | 5 passando — campanha→segmento por nome via config |
+| `server/lib/ads-decision-engine/` | Puro + fixture CSV real | 15 passando — 6 flags + fadiga + regressão da análise manual 16/07 |
+| `server/lib/ads-report/` | Puro | 9 passando — view models das 3 vistas + KPIs blended por segmento |
 
 ---
 
