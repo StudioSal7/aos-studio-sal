@@ -81,7 +81,7 @@ def resumo_table(doc, objeto):
         ("Tema", "Descrição"),
         ("Partes", "{nome_completo} e Studio Sal LTDA"),
         ("Objeto", objeto),
-        ("Valor", "{valor} ({valor_extenso}) — {forma_pagamento}"),
+        ("Valor", "{valor} ({valor_extenso}) — {pagamento}"),
         ("Prazo", "{prazo}"),
     ]
     for i, (a, b) in enumerate(rows):
@@ -131,7 +131,7 @@ def build(titulo, objeto_resumo, objeto_texto, servicos_fn, out_path):
     body(doc, "A CLIENTE compromete-se a: efetuar os pagamentos nos prazos acordados; fornecer dados verdadeiros e os materiais/acessos necessários; participar ativamente das atividades propostas; fazer uso pessoal e não comercial do conteúdo/metodologia.")
 
     clause(doc, "4. VALOR E PAGAMENTO")
-    body(doc, "4.1. Pelo objeto deste contrato, a CLIENTE pagará à STUDIO o valor de {valor} ({valor_extenso}), na forma de pagamento: {forma_pagamento}. Condições adicionais (parcelas, vencimentos): {condicoes_pagamento}.")
+    body(doc, "4.1. Pelo objeto deste contrato, a CLIENTE pagará à STUDIO o valor total de {valor} ({valor_extenso}), {pagamento}.")
     body(doc, "4.2. A não quitação nos prazos pactuados implica suspensão dos serviços, multa de 10% (dez por cento) e juros de 1% (um por cento) ao mês.")
     body(doc, "4.3. Os pagamentos devem ser comprovados por e-mail ou WhatsApp em até 24 horas — é responsabilidade da CLIENTE essa comprovação.")
     body(doc, "4.4. Em caso de atraso superior a 30 (trinta) dias, o contrato poderá ser rescindido por justa causa pela STUDIO, retidos os materiais já elaborados até a quitação.")

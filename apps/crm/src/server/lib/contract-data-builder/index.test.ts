@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildContractData } from './index';
+import { buildContractData, derivarParcelas } from './index';
 
 const baseLead = {
   name: 'Ana Beatriz Souza',
@@ -157,6 +157,83 @@ describe('buildContractData', () => {
       for (const v of Object.values(data)) {
         expect(v).not.toMatch(/\[REVISAR/);
       }
+    });
+  });
+
+  describe('pagamento estruturado (FIX 2)', () => {
+    it('derivarParcelas: soma das parcelas == total sempre (resto na última)', () => {
+      // 1997,00 / 3 = 665,66 ×2 + 665,68 (não 665,67 ×3 = 1997,01)
+      const { base, last } = derivarParcelas(199700, 3);
+      expect(base).toBe(66566);
+      expect(last).toBe(66568);
+      expect(base * 2 + last).toBe(199700);
+    });
+
+    it('derivarParcelas: invariante base×(n-1)+last == total para vários casos', () => {
+      for (const [total, n] of [
+        [199700, 3],
+        [180000, 3],
+        [1000000, 7],
+        [12345, 5],
+        [100, 3],
+      ] as const) {
+        const { base, last } = derivarParcelas(total, n);
+        expect(base * (n - 1) + last).toBe(total);
+      }
+    });
+
+    it('parcelado: representação única, coerente, sem contradição com o total', () => {
+      const data = buildContractData({
+        lead: { ...baseLead, valorProposto: '1997.00', formaPagamentoNegociada: 'pix' },
+        product: baseProduct,
+        coletado: {
+          pagamento: { tipo: 'parcelado', metodo: 'cartao_credito', numParcelas: 3, vencimento: 'todo dia 10' },
+        },
+      });
+      // NÃO menciona PIX (forma do lead) — a estrutura de pagamento é a única fonte
+      expect(data.pagamento).not.toMatch(/PIX/);
+      expect(data.pagamento).toContain('3 (três) parcelas');
+      expect(data.pagamento).toContain('Cartão de crédito');
+      expect(data.pagamento).toContain('vencimento todo dia 10');
+      // valores derivados coerentes: 2 de 665,66 + última 665,68
+      expect(data.pagamento).toContain('665,66');
+      expect(data.pagamento).toContain('665,68');
+    });
+
+    it('parcelado divisível exato: parcelas iguais', () => {
+      const data = buildContractData({
+        lead: { ...baseLead, valorProposto: '1800.00' },
+        product: baseProduct,
+        coletado: { pagamento: { tipo: 'parcelado', metodo: 'boleto', numParcelas: 3 } },
+      });
+      expect(data.pagamento).toContain('3 (três) parcelas de R$\xa0600,00');
+    });
+
+    it('à vista: método + total, sem parcelas', () => {
+      const data = buildContractData({
+        lead: baseLead,
+        product: baseProduct,
+        coletado: { pagamento: { tipo: 'a_vista', metodo: 'pix' } },
+      });
+      expect(data.pagamento).toBe('à vista, via PIX');
+    });
+
+    it('parcela feminina (uma/duas), não "um/dois parcelas"', () => {
+      const data = buildContractData({
+        lead: { ...baseLead, valorProposto: '1000.00' },
+        product: baseProduct,
+        coletado: { pagamento: { tipo: 'parcelado', metodo: 'pix', numParcelas: 2 } },
+      });
+      expect(data.pagamento).toContain('2 (duas) parcelas');
+    });
+
+    it('snapshot antigo (condicoesPagamento free text, sem pagamento) ainda renderiza (compat)', () => {
+      const data = buildContractData({
+        lead: baseLead,
+        product: baseProduct,
+        coletado: { condicoesPagamento: '3x no cartão' },
+      });
+      expect(data.pagamento).toBe('3x no cartão');
     });
   });
 });

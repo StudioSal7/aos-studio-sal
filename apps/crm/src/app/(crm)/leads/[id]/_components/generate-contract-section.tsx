@@ -11,7 +11,7 @@ import type { ContractCollectedData } from '@/server/lib/contract-data-builder';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
 import { productTipoLabel } from '@/lib/product-tipo';
 
@@ -34,8 +34,16 @@ const EMPTY_COLETADO: ContractCollectedData = {
     estado: '',
     cep: '',
   },
-  condicoesPagamento: '',
+  pagamento: { tipo: 'a_vista', metodo: 'pix' },
 };
+
+const METODOS = [
+  ['pix', 'PIX'],
+  ['cartao_credito', 'Cartão de crédito'],
+  ['boleto', 'Boleto'],
+  ['transferencia', 'Transferência bancária'],
+  ['outro', 'Outro'],
+] as const;
 
 export function GenerateContractSection({ leadId, isPaid, contracts }: GenerateContractSectionProps) {
   const router = useRouter();
@@ -235,15 +243,97 @@ export function GenerateContractSection({ leadId, isPaid, contracts }: GenerateC
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="contrato-condicoes">Condições de pagamento</Label>
-            <Textarea
-              id="contrato-condicoes"
-              rows={3}
-              placeholder="Ex: 3x de R$ 665,67 no cartão, vencimento dia 10"
-              value={coletado.condicoesPagamento ?? ''}
-              onChange={(e) => setColetado((c) => ({ ...c, condicoesPagamento: e.target.value }))}
-            />
+          <div className="space-y-3 border-t border-line pt-4">
+            <p className="text-micro text-ink-muted">
+              pagamento · o valor total vem do fechamento do lead; a parcela é calculada a partir dele
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="contrato-pag-tipo">Forma</Label>
+                <Select
+                  id="contrato-pag-tipo"
+                  value={coletado.pagamento?.tipo ?? 'a_vista'}
+                  onChange={(e) => {
+                    const tipo = e.target.value as 'a_vista' | 'parcelado';
+                    setColetado((c) => ({
+                      ...c,
+                      pagamento:
+                        tipo === 'parcelado'
+                          ? { tipo, metodo: c.pagamento?.metodo ?? 'cartao_credito', numParcelas: 2, vencimento: '' }
+                          : { tipo, metodo: c.pagamento?.metodo ?? 'pix' },
+                    }));
+                  }}
+                >
+                  <option value="a_vista">À vista</option>
+                  <option value="parcelado">Parcelado</option>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contrato-pag-metodo">Método</Label>
+                <Select
+                  id="contrato-pag-metodo"
+                  value={coletado.pagamento?.metodo ?? 'pix'}
+                  onChange={(e) =>
+                    setColetado((c) => ({
+                      ...c,
+                      pagamento: { ...(c.pagamento ?? { tipo: 'a_vista' }), metodo: e.target.value },
+                    }))
+                  }
+                >
+                  {METODOS.map(([v, label]) => (
+                    <option key={v} value={v}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            {coletado.pagamento?.tipo === 'parcelado' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="contrato-pag-parcelas">Nº de parcelas</Label>
+                  <Input
+                    id="contrato-pag-parcelas"
+                    type="number"
+                    min="2"
+                    step="1"
+                    value={coletado.pagamento.numParcelas || ''}
+                    onChange={(e) =>
+                      setColetado((c) => ({
+                        ...c,
+                        pagamento: {
+                          tipo: 'parcelado',
+                          metodo: c.pagamento?.metodo ?? 'cartao_credito',
+                          numParcelas: Math.max(2, Number(e.target.value) || 2),
+                          vencimento: c.pagamento && 'vencimento' in c.pagamento ? c.pagamento.vencimento : '',
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contrato-pag-venc">Vencimento</Label>
+                  <Input
+                    id="contrato-pag-venc"
+                    placeholder="Ex: todo dia 10"
+                    value={(coletado.pagamento.vencimento as string) ?? ''}
+                    onChange={(e) =>
+                      setColetado((c) => ({
+                        ...c,
+                        pagamento: {
+                          tipo: 'parcelado',
+                          metodo: c.pagamento?.metodo ?? 'cartao_credito',
+                          numParcelas:
+                            c.pagamento && 'numParcelas' in c.pagamento ? c.pagamento.numParcelas : 2,
+                          vencimento: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {error && <p className="text-sm text-clay">{error}</p>}

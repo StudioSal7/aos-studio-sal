@@ -5,7 +5,7 @@
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { centsFromReaisInput, formatCents } from '../../../lib/money';
-import { valorPorExtenso } from '../valor-extenso';
+import { numeroCardinalPorExtenso, valorPorExtenso } from '../valor-extenso';
 
 const OPERATION_TZ = process.env.NEXT_PUBLIC_OPERATION_TZ || 'America/Sao_Paulo';
 
@@ -41,12 +41,21 @@ export type ContractEnderecoInput = {
   cep?: string | null;
 };
 
+// Pagamento estruturado — representação ÚNICA (nunca dois campos brigando).
+// O total vem sempre de lead.valorProposto; no parcelado a parcela é DERIVADA
+// (total ÷ nº, resto de centavos na última) para garantir parcela×nº == total.
+export type PagamentoColetado =
+  | { tipo: 'a_vista'; metodo?: string | null }
+  | { tipo: 'parcelado'; metodo?: string | null; numParcelas: number; vencimento?: string | null };
+
 export type ContractCollectedData = {
   nomeCompleto?: string | null;
   cpfCnpj?: string | null;
   rg?: string | null;
   endereco?: ContractEnderecoInput | null;
+  /** @deprecated Substituído por `pagamento` estruturado (FIX 2). Mantido só para ler snapshots antigos. */
   condicoesPagamento?: string | null;
+  pagamento?: PagamentoColetado | null;
   /** Vigência do contrato. Vazio → default PRAZO_DEFAULT ("6 (seis) meses"). Sobreponível. */
   prazo?: string | null;
 };
@@ -54,6 +63,70 @@ export type ContractCollectedData = {
 // Vigência padrão quando o closer não informa — o documento final nunca sai com
 // placeholder de "revisar". Sobreponível via coletado.prazo.
 export const PRAZO_DEFAULT = '6 (seis) meses';
+
+/**
+ * Divide um total (cents) em `n` parcelas inteiras, jogando o resto de centavos
+ * na última — assim base×(n-1) + last === total SEMPRE (sem inconsistência de
+ * arredondamento tipo "3× R$665,67 = R$1997,01").
+ */
+export function derivarParcelas(totalCents: number, n: number): { base: number; last: number } {
+  const parcelas = Math.max(1, Math.round(n));
+  const base = Math.floor(totalCents / parcelas);
+  const last = totalCents - base * (parcelas - 1);
+  return { base, last };
+}
+
+// "dois/um" → "duas/uma" pra concordar com "parcelas" (feminino). Escopo mínimo.
+function cardinalFeminino(n: number): string {
+  return numeroCardinalPorExtenso(n)
+    .replace(/\bum\b/g, 'uma')
+    .replace(/\bdois\b/g, 'duas');
+}
+
+function metodoPagamentoLabel(metodo: string | null | undefined, formaLead: string | null | undefined): string {
+  const raw = (metodo && metodo.trim()) || formaLead || '';
+  return raw ? (FORMA_PAGAMENTO_LABELS[raw] ?? raw) : '';
+}
+
+/** String de pagamento ÚNICA e coerente (à vista | parcelado), consumida no resumo e na cláusula 4.1. */
+function buildPagamento(input: {
+  pagamento: PagamentoColetado | null | undefined;
+  condicoesLegado: string | null | undefined;
+  formaLead: string | null | undefined;
+  totalCents: number | null;
+}): string {
+  const { pagamento, condicoesLegado, formaLead, totalCents } = input;
+
+  // Snapshots antigos (pré-FIX 2): sem `pagamento` estruturado.
+  if (!pagamento) {
+    if (condicoesLegado && condicoesLegado.trim()) return condicoesLegado.trim();
+    const label = metodoPagamentoLabel(null, formaLead);
+    return label ? `à vista, via ${label}` : '';
+  }
+
+  const label = metodoPagamentoLabel(pagamento.metodo, formaLead);
+  const via = label ? `, via ${label}` : '';
+
+  if (pagamento.tipo === 'a_vista' || pagamento.numParcelas <= 1) {
+    return `à vista${via}`;
+  }
+
+  const n = Math.round(pagamento.numParcelas);
+  const nExt = cardinalFeminino(n);
+  const venc =
+    pagamento.vencimento && pagamento.vencimento.trim() ? `, com vencimento ${pagamento.vencimento.trim()}` : '';
+
+  if (totalCents === null) {
+    return `em ${n} (${nExt}) parcelas${via}${venc}`;
+  }
+
+  const { base, last } = derivarParcelas(totalCents, n);
+  if (base === last) {
+    return `em ${n} (${nExt}) parcelas de ${formatCents(base)}${via}${venc}`;
+  }
+  const viaSendo = label ? `${via}, ` : ', ';
+  return `em ${n} (${nExt}) parcelas${viaSendo}sendo ${n - 1} de ${formatCents(base)} e a última de ${formatCents(last)}${venc}`;
+}
 
 export type BuildContractDataInput = {
   lead: ContractLeadInput;
@@ -115,6 +188,12 @@ export function buildContractData(input: BuildContractDataInput): Record<string,
     valor_extenso: valorCents !== null ? valorPorExtenso(valorCents) : '',
     forma_pagamento: formaPagamento,
     condicoes_pagamento: coletado.condicoesPagamento ?? '',
+    pagamento: buildPagamento({
+      pagamento: coletado.pagamento,
+      condicoesLegado: coletado.condicoesPagamento,
+      formaLead: lead.formaPagamentoNegociada,
+      totalCents: valorCents,
+    }),
     prazo: coletado.prazo?.trim() || PRAZO_DEFAULT,
     endereco: endereco.concatenado,
     endereco_logradouro: endereco.logradouro,

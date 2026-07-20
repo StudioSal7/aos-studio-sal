@@ -56,3 +56,28 @@ describe('render do contrato — prazo (FIX 1)', () => {
     });
   }
 });
+
+describe('render do contrato — pagamento (FIX 2)', () => {
+  it('parcelado no cartão: documento coerente, sem PIX/cartão brigando, sem math inconsistente', () => {
+    const text = renderToText(
+      'mentoria',
+      { pagamento: { tipo: 'parcelado', metodo: 'cartao_credito', numParcelas: 3, vencimento: 'todo dia 10' } },
+      { valorProposto: '1997.00', formaPagamentoNegociada: 'pix' },
+    );
+    // não sai "PIX ... 3x no cartão" (o bug original)
+    expect(text).not.toContain('PIX');
+    expect(text).toContain('3 (três) parcelas');
+    expect(text).toContain('Cartão de crédito');
+    // valores derivados coerentes (665,66 ×2 + 665,68 = 1997,00), nunca 665,67
+    expect(text).toContain('665,66');
+    expect(text).toContain('665,68');
+    expect(text).not.toContain('665,67');
+    // não sobra o campo antigo "Condições adicionais"
+    expect(text).not.toContain('Condições adicionais');
+  });
+
+  it('à vista: método único no documento', () => {
+    const text = renderToText('mentoria', { pagamento: { tipo: 'a_vista', metodo: 'pix' } });
+    expect(text).toContain('à vista, via PIX');
+  });
+});

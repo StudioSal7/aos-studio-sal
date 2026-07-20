@@ -110,6 +110,12 @@ function integerToWords(n: number): string {
   return joinGroups(groups);
 }
 
+/** Cardinal por extenso de um inteiro >= 0 (ex.: 3 → "três"). Para "3 (três) parcelas". */
+export function numeroCardinalPorExtenso(n: number): string {
+  const v = Number.isFinite(n) ? Math.round(Math.abs(n)) : 0;
+  return integerToWords(v);
+}
+
 /** cents inteiro (pode vir negativo/fracionário por engano de fronteira — normaliza defensivamente) → texto pt-BR. */
 export function valorPorExtenso(cents: number): string {
   const totalCents = Number.isFinite(cents) ? Math.round(Math.abs(cents)) : 0;

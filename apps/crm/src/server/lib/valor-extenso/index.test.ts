@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { valorPorExtenso } from './index';
+import { numeroCardinalPorExtenso, valorPorExtenso } from './index';
+
+describe('numeroCardinalPorExtenso', () => {
+  it('cardinais comuns de parcela', () => {
+    expect(numeroCardinalPorExtenso(1)).toBe('um');
+    expect(numeroCardinalPorExtenso(3)).toBe('três');
+    expect(numeroCardinalPorExtenso(6)).toBe('seis');
+    expect(numeroCardinalPorExtenso(12)).toBe('doze');
+    expect(numeroCardinalPorExtenso(0)).toBe('zero');
+  });
+});
 
 describe('valorPorExtenso', () => {
   it('zero', () => {
