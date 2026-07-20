@@ -47,7 +47,13 @@ export type ContractCollectedData = {
   rg?: string | null;
   endereco?: ContractEnderecoInput | null;
   condicoesPagamento?: string | null;
+  /** Vigência do contrato. Vazio → default PRAZO_DEFAULT ("6 (seis) meses"). Sobreponível. */
+  prazo?: string | null;
 };
+
+// Vigência padrão quando o closer não informa — o documento final nunca sai com
+// placeholder de "revisar". Sobreponível via coletado.prazo.
+export const PRAZO_DEFAULT = '6 (seis) meses';
 
 export type BuildContractDataInput = {
   lead: ContractLeadInput;
@@ -109,6 +115,7 @@ export function buildContractData(input: BuildContractDataInput): Record<string,
     valor_extenso: valorCents !== null ? valorPorExtenso(valorCents) : '',
     forma_pagamento: formaPagamento,
     condicoes_pagamento: coletado.condicoesPagamento ?? '',
+    prazo: coletado.prazo?.trim() || PRAZO_DEFAULT,
     endereco: endereco.concatenado,
     endereco_logradouro: endereco.logradouro,
     endereco_numero: endereco.numero,

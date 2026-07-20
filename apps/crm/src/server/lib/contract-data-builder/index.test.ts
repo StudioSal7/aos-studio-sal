@@ -126,4 +126,37 @@ describe('buildContractData', () => {
     });
     expect(data.data).toBe('');
   });
+
+  describe('prazo (FIX 1)', () => {
+    it('prazo omitido → default "6 (seis) meses", nunca [REVISAR]', () => {
+      const data = buildContractData({ lead: baseLead, product: baseProduct, coletado: {} });
+      expect(data.prazo).toBe('6 (seis) meses');
+      expect(data.prazo).not.toMatch(/\[REVISAR/);
+    });
+
+    it('prazo vazio/espaços → default (não deixa em branco)', () => {
+      const data = buildContractData({
+        lead: baseLead,
+        product: baseProduct,
+        coletado: { prazo: '   ' },
+      });
+      expect(data.prazo).toBe('6 (seis) meses');
+    });
+
+    it('prazo informado sobrepõe o default', () => {
+      const data = buildContractData({
+        lead: baseLead,
+        product: baseProduct,
+        coletado: { prazo: '12 (doze) meses' },
+      });
+      expect(data.prazo).toBe('12 (doze) meses');
+    });
+
+    it('nenhum valor do record contém "[REVISAR"', () => {
+      const data = buildContractData({ lead: baseLead, product: baseProduct, coletado: {} });
+      for (const v of Object.values(data)) {
+        expect(v).not.toMatch(/\[REVISAR/);
+      }
+    });
+  });
 });
