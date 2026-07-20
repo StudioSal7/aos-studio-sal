@@ -15,6 +15,7 @@ const baseProduct = { displayName: 'Mentoria Salto' };
 const baseColetado = {
   nomeCompleto: 'Ana Beatriz Souza Lima',
   cpfCnpj: '123.456.789-00',
+  rg: '12.345.678-9',
   endereco: {
     logradouro: 'Rua das Flores',
     numero: '123',
@@ -39,6 +40,7 @@ describe('buildContractData', () => {
     expect(data.nome).toBe('Bia');
     expect(data.nome_completo).toBe('Ana Beatriz Souza Lima');
     expect(data.cpf_cnpj).toBe('123.456.789-00');
+    expect(data.rg).toBe('12.345.678-9');
     expect(data.email).toBe('bia@example.com');
     expect(data.whatsapp).toBe('+5567999990000');
     expect(data.produto).toBe('Mentoria Salto');
@@ -72,6 +74,7 @@ describe('buildContractData', () => {
     });
     expect(data.nome_completo).toBe('');
     expect(data.cpf_cnpj).toBe('');
+    expect(data.rg).toBe('');
     expect(data.condicoes_pagamento).toBe('');
     expect(data.endereco).toBe('');
     expect(data.endereco_logradouro).toBe('');

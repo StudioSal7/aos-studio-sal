@@ -44,6 +44,7 @@ export type ContractEnderecoInput = {
 export type ContractCollectedData = {
   nomeCompleto?: string | null;
   cpfCnpj?: string | null;
+  rg?: string | null;
   endereco?: ContractEnderecoInput | null;
   condicoesPagamento?: string | null;
 };
@@ -100,6 +101,7 @@ export function buildContractData(input: BuildContractDataInput): Record<string,
     nome: lead.nickname || lead.name || '',
     nome_completo: coletado.nomeCompleto ?? '',
     cpf_cnpj: coletado.cpfCnpj ?? '',
+    rg: coletado.rg ?? '',
     email: lead.email ?? '',
     whatsapp: lead.whatsappE164 ?? '',
     produto: product?.displayName ?? '',

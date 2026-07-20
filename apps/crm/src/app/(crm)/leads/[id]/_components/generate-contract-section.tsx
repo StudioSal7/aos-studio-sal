@@ -28,6 +28,7 @@ const TIPO_LABEL: Record<string, string> = {
 const EMPTY_COLETADO: ContractCollectedData = {
   nomeCompleto: '',
   cpfCnpj: '',
+  rg: '',
   endereco: {
     logradouro: '',
     numero: '',
@@ -134,13 +135,23 @@ export function GenerateContractSection({ leadId, isPaid, contracts }: GenerateC
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="contrato-cpf-cnpj">CPF / CNPJ</Label>
-            <Input
-              id="contrato-cpf-cnpj"
-              value={coletado.cpfCnpj ?? ''}
-              onChange={(e) => setColetado((c) => ({ ...c, cpfCnpj: e.target.value }))}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="contrato-cpf-cnpj">CPF / CNPJ</Label>
+              <Input
+                id="contrato-cpf-cnpj"
+                value={coletado.cpfCnpj ?? ''}
+                onChange={(e) => setColetado((c) => ({ ...c, cpfCnpj: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contrato-rg">RG</Label>
+              <Input
+                id="contrato-rg"
+                value={coletado.rg ?? ''}
+                onChange={(e) => setColetado((c) => ({ ...c, rg: e.target.value }))}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-[1fr_auto] gap-3">
