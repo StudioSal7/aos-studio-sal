@@ -23,7 +23,7 @@
 
 import { and, eq, lt, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '@repo/db/schema';
+import type * as schema from '@repo/db/schema';
 import { bioRateLimit } from '@repo/db/schema';
 import { bucketIndexFor, evaluateSlidingWindow } from './window-math';
 

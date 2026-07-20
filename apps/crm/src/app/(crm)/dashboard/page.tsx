@@ -270,7 +270,6 @@ export default async function DashboardPage({
 
   // KPI percents
   const engajadasCount = openLeads - naoTrabalhadas + wonLeads;
-  const recusadasCount = lostLeads;
 
   return (
     <div className="flex flex-col">

@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { Route } from 'next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,9 +70,9 @@ export function StartSessionForm({
     return (
       <p className="text-micro text-ink-muted normal-case tracking-normal">
         Nenhum cenário ativo. Crie um em{' '}
-        <a className="underline" href="/comercial/treino/cenarios">
+        <Link className="underline" href="/comercial/treino/cenarios">
           cenários
-        </a>
+        </Link>
         .
       </p>
     );

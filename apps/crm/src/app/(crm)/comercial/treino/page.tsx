@@ -14,12 +14,6 @@ import {
 import { StartSessionForm } from './_components/start-session-form';
 import { TraineeTrends } from './_components/trainee-trends';
 
-const DIFFICULTY_LABEL: Record<string, string> = {
-  facil: 'fácil',
-  medio: 'médio',
-  dificil: 'difícil',
-};
-
 const STATUS_LABEL: Record<string, string> = {
   em_andamento: 'em andamento',
   concluida: 'concluída',

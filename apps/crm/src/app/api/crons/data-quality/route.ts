@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     .returning({ id: schema.leads.id });
 
   const total = idleResult.length + reviewResult.length;
-  console.log(
+  console.warn(
     `[data-quality] ${now.toISOString()} — flagged ${total} leads (${idleResult.length} idle, ${reviewResult.length} review overdue)`,
   );
 

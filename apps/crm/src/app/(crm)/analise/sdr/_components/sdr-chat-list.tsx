@@ -49,7 +49,6 @@ export function SdrChatList() {
 
   useEffect(() => {
     void loadChats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleAnalyze(chat: EvolutionChatItem) {

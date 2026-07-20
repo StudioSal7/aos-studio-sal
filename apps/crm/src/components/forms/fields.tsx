@@ -6,7 +6,7 @@
 // interactions (A/B/C + number keys on select, S/N on yes-no, auto-advance on
 // single-choice), our look. No framer-motion.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Check } from 'lucide-react';
 import { formatPhone } from './validation';
 import { interpolate } from './personalization';
@@ -124,7 +124,7 @@ function DateField({ field, value, onChange, onSubmit, autoFocus, variables }: F
 // Choice --------------------------------------------------------------------
 
 function SelectField({ field, value, onChange, onSubmit, variables }: FieldProps) {
-  const options = field.config?.opcoes ?? [];
+  const options = useMemo(() => field.config?.opcoes ?? [], [field.config?.opcoes]);
   const selected = value as string | undefined;
 
   useEffect(() => {
