@@ -106,12 +106,8 @@ def build(titulo, objeto_resumo, objeto_texto, servicos_fn, out_path):
     clause(doc, "PARTES")
     body(
         doc,
-        "CONTRATANTE: {nome_completo}, portador(a) do RG nº {rg} e do CPF/CNPJ "
-        "nº {cpf_cnpj}, residente e domiciliado(a) em {endereco_logradouro}, nº "
-        "{endereco_numero}, {endereco_complemento}, bairro {endereco_bairro}, "
-        "{endereco_cidade}/{endereco_estado}, CEP {endereco_cep}, e-mail "
-        "{email}, WhatsApp {whatsapp}, doravante denominada CLIENTE; e "
-        f"CONTRATADA: {CONTRATADA_BLOCK}. Têm entre si justo e acertado o "
+        "CONTRATANTE: {qualificacao_contratante}, doravante denominada CLIENTE; "
+        f"e CONTRATADA: {CONTRATADA_BLOCK}. Têm entre si justo e acertado o "
         "presente contrato, que se regerá pelas cláusulas a seguir.",
     )
 

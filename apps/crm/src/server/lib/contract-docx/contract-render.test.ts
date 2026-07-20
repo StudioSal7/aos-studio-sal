@@ -81,3 +81,31 @@ describe('render do contrato — pagamento (FIX 2)', () => {
     expect(text).toContain('à vista, via PIX');
   });
 });
+
+describe('render do contrato — qualificação PF/PJ (FIX 5)', () => {
+  it('contratante PJ: CNPJ + representante no documento, sem "RG da própria LTDA"', () => {
+    const text = renderToText('mentoria', {
+      nomeCompleto: 'RCI Imóveis LTDA',
+      cpfCnpj: '17.026.137/0001-18',
+      representanteNome: 'Janaína Kadja Silva Pitanga',
+      representanteCpf: '270.978.148-45',
+      endereco: { logradouro: 'Rua Visconde de Pirajá', numero: '414', cidade: 'Rio de Janeiro', estado: 'RJ' },
+    });
+    expect(text).toContain('pessoa jurídica de direito privado');
+    expect(text).toContain('inscrita no CNPJ sob o nº 17.026.137/0001-18');
+    expect(text).toContain('representada por Janaína Kadja Silva Pitanga');
+    expect(text).not.toMatch(/LTDA, portador\(a\) do RG/);
+  });
+
+  it('contratante PF: RG + CPF no documento, sem "pessoa jurídica"', () => {
+    const text = renderToText('mentoria', {
+      nomeCompleto: 'Lorena Vieira Alves',
+      cpfCnpj: '958.957.601-04',
+      rg: '958.957.601-04',
+      endereco: { cidade: 'Goiânia', estado: 'GO' },
+    });
+    expect(text).toContain('portador(a) do RG nº 958.957.601-04');
+    expect(text).toContain('inscrito(a) no CPF nº 958.957.601-04');
+    expect(text).not.toContain('pessoa jurídica');
+  });
+});

@@ -58,6 +58,10 @@ export function GenerateContractSection({ leadId, isPaid, contracts }: GenerateC
     setOpen(true);
   }
 
+  // 14 dígitos = CNPJ = pessoa jurídica (mesma detecção do builder, inline pra
+  // não puxar o módulo server pro bundle do client).
+  const isPJ = (coletado.cpfCnpj ?? '').replace(/[^0-9]/g, '').length === 14;
+
   function submit() {
     setError(null);
     startTransition(async () => {
@@ -149,7 +153,7 @@ export function GenerateContractSection({ leadId, isPaid, contracts }: GenerateC
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contrato-rg">RG</Label>
+              <Label htmlFor="contrato-rg">RG {isPJ && <span className="text-ink-muted">(pessoa física)</span>}</Label>
               <Input
                 id="contrato-rg"
                 value={coletado.rg ?? ''}
@@ -157,6 +161,58 @@ export function GenerateContractSection({ leadId, isPaid, contracts }: GenerateC
               />
             </div>
           </div>
+
+          {isPJ ? (
+            <div className="space-y-3 rounded-none border border-line bg-canvas p-3">
+              <p className="text-micro text-ink-muted">representante legal (pessoa jurídica)</p>
+              <div className="space-y-2">
+                <Label htmlFor="contrato-rep-nome">Nome do representante</Label>
+                <Input
+                  id="contrato-rep-nome"
+                  value={coletado.representanteNome ?? ''}
+                  onChange={(e) => setColetado((c) => ({ ...c, representanteNome: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="contrato-rep-cpf">CPF do representante</Label>
+                  <Input
+                    id="contrato-rep-cpf"
+                    value={coletado.representanteCpf ?? ''}
+                    onChange={(e) => setColetado((c) => ({ ...c, representanteCpf: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contrato-rep-rg">RG do representante</Label>
+                  <Input
+                    id="contrato-rep-rg"
+                    value={coletado.representanteRg ?? ''}
+                    onChange={(e) => setColetado((c) => ({ ...c, representanteRg: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="contrato-nacionalidade">Nacionalidade</Label>
+                <Input
+                  id="contrato-nacionalidade"
+                  placeholder="brasileira"
+                  value={coletado.nacionalidade ?? ''}
+                  onChange={(e) => setColetado((c) => ({ ...c, nacionalidade: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contrato-profissao">Profissão</Label>
+                <Input
+                  id="contrato-profissao"
+                  value={coletado.profissao ?? ''}
+                  onChange={(e) => setColetado((c) => ({ ...c, profissao: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <div className="space-y-2">

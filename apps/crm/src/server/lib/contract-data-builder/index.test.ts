@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildContractData, derivarParcelas } from './index';
+import { buildContractData, derivarParcelas, isPessoaJuridica } from './index';
 
 const baseLead = {
   name: 'Ana Beatriz Souza',
@@ -234,6 +234,78 @@ describe('buildContractData', () => {
         coletado: { condicoesPagamento: '3x no cartão' },
       });
       expect(data.pagamento).toBe('3x no cartão');
+    });
+  });
+
+  describe('qualificação PF/PJ do contratante (FIX 5)', () => {
+    it('isPessoaJuridica detecta pelo formato (14 dígitos = CNPJ)', () => {
+      expect(isPessoaJuridica('17.026.137/0001-18')).toBe(true);
+      expect(isPessoaJuridica('958.957.601-04')).toBe(false); // CPF
+      expect(isPessoaJuridica('')).toBe(false);
+      expect(isPessoaJuridica(null)).toBe(false);
+    });
+
+    it('PF: RG + CPF, sem "pessoa jurídica" nem representante', () => {
+      const data = buildContractData({
+        lead: { ...baseLead, email: 'l@ex.com', whatsappE164: '+5562999990000' },
+        product: baseProduct,
+        coletado: {
+          nomeCompleto: 'Lorena Vieira Alves',
+          cpfCnpj: '958.957.601-04',
+          rg: '958.957.601-04',
+          nacionalidade: 'brasileira',
+          profissao: 'psicóloga',
+          endereco: { logradouro: 'Av C255', numero: '287', cidade: 'Goiânia', estado: 'GO', cep: '74280010' },
+        },
+      });
+      const q = data.qualificacao_contratante ?? '';
+      expect(q).toContain('Lorena Vieira Alves');
+      expect(q).toContain('brasileira');
+      expect(q).toContain('psicóloga');
+      expect(q).toContain('portador(a) do RG nº 958.957.601-04');
+      expect(q).toContain('inscrito(a) no CPF nº 958.957.601-04');
+      expect(q).toContain('residente e domiciliado(a) em');
+      expect(q).not.toContain('pessoa jurídica');
+      expect(q).not.toContain('representada');
+      expect(q).not.toContain('CNPJ');
+    });
+
+    it('PJ: razão social + CNPJ + sede + representante, SEM "portador do RG" da própria PJ', () => {
+      const data = buildContractData({
+        lead: { ...baseLead, email: 'rci@ex.com', whatsappE164: '+5513999990000' },
+        product: baseProduct,
+        coletado: {
+          nomeCompleto: 'RCI Imóveis LTDA',
+          cpfCnpj: '17.026.137/0001-18',
+          representanteNome: 'Janaína Kadja Silva Pitanga',
+          representanteRg: '34.994.653-X',
+          representanteCpf: '270.978.148-45',
+          endereco: { logradouro: 'Rua Visconde de Pirajá', numero: '414', cidade: 'Rio de Janeiro', estado: 'RJ', cep: '22410-002' },
+        },
+      });
+      const q = data.qualificacao_contratante ?? '';
+      expect(q).toContain('RCI Imóveis LTDA');
+      expect(q).toContain('pessoa jurídica de direito privado');
+      expect(q).toContain('inscrita no CNPJ sob o nº 17.026.137/0001-18');
+      expect(q).toContain('com sede em');
+      expect(q).toContain('neste ato representada por Janaína Kadja Silva Pitanga');
+      expect(q).toContain('RG nº 34.994.653-X');
+      expect(q).toContain('CPF nº 270.978.148-45');
+      // não pode dizer que a PRÓPRIA PJ é "portador(a) do RG" (o bug do FIX 5)
+      expect(q).not.toMatch(/LTDA, portador\(a\) do RG/);
+      expect(q).not.toContain('residente e domiciliado');
+    });
+
+    it('campos ausentes não deixam vírgula solta / placeholder vazio', () => {
+      const data = buildContractData({
+        lead: { ...baseLead, email: null, whatsappE164: null },
+        product: baseProduct,
+        coletado: { nomeCompleto: 'Fulana', cpfCnpj: '111.222.333-44' },
+      });
+      const q = data.qualificacao_contratante ?? '';
+      expect(q).not.toMatch(/,\s*,/);
+      expect(q).not.toMatch(/,\s*$/);
+      expect(q.startsWith('Fulana')).toBe(true);
     });
   });
 });

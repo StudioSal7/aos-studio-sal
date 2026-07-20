@@ -49,9 +49,15 @@ export type PagamentoColetado =
   | { tipo: 'parcelado'; metodo?: string | null; numParcelas: number; vencimento?: string | null };
 
 export type ContractCollectedData = {
-  nomeCompleto?: string | null;
-  cpfCnpj?: string | null;
-  rg?: string | null;
+  nomeCompleto?: string | null; // PF: nome completo · PJ: razão social
+  cpfCnpj?: string | null; // 14 dígitos → tratado como PJ; senão PF
+  rg?: string | null; // PF
+  nacionalidade?: string | null; // PF (ex.: "brasileira")
+  profissao?: string | null; // PF (ex.: "psicóloga")
+  // PJ — quem assina pela pessoa jurídica
+  representanteNome?: string | null;
+  representanteRg?: string | null;
+  representanteCpf?: string | null;
   endereco?: ContractEnderecoInput | null;
   /** @deprecated Substituído por `pagamento` estruturado (FIX 2). Mantido só para ler snapshots antigos. */
   condicoesPagamento?: string | null;
@@ -86,6 +92,62 @@ function cardinalFeminino(n: number): string {
 function metodoPagamentoLabel(metodo: string | null | undefined, formaLead: string | null | undefined): string {
   const raw = (metodo && metodo.trim()) || formaLead || '';
   return raw ? (FORMA_PAGAMENTO_LABELS[raw] ?? raw) : '';
+}
+
+function soDigitos(s: string | null | undefined): string {
+  return (s ?? '').replace(/[^0-9]/g, '');
+}
+
+/** PJ quando o documento tem 14 dígitos (CNPJ); senão PF. Detecção pelo formato, sem campo de tipo. */
+export function isPessoaJuridica(cpfCnpj: string | null | undefined): boolean {
+  return soDigitos(cpfCnpj).length === 14;
+}
+
+/**
+ * Bloco de qualificação do CONTRATANTE — ramifica PF/PJ. Junta só os pedaços
+ * presentes (campo vazio não deixa vírgula solta). PF: nome, nacionalidade,
+ * profissão, RG, CPF, endereço. PJ: razão social, CNPJ, sede, representante.
+ */
+function buildQualificacaoContratante(input: {
+  coletado: ContractCollectedData;
+  enderecoStr: string;
+  email: string | null | undefined;
+  whatsapp: string | null | undefined;
+}): string {
+  const { coletado, enderecoStr, email, whatsapp } = input;
+  const nome = coletado.nomeCompleto?.trim() ?? '';
+  const doc = coletado.cpfCnpj?.trim() ?? '';
+  const contato = [email?.trim() && `e-mail ${email.trim()}`, whatsapp?.trim() && `WhatsApp ${whatsapp.trim()}`].filter(
+    Boolean,
+  );
+
+  if (isPessoaJuridica(doc)) {
+    const parts: string[] = [nome, 'pessoa jurídica de direito privado'];
+    if (doc) parts.push(`inscrita no CNPJ sob o nº ${doc}`);
+    if (enderecoStr) parts.push(`com sede em ${enderecoStr}`);
+
+    const rep = coletado.representanteNome?.trim();
+    if (rep) {
+      const repId = [
+        coletado.representanteRg?.trim() && `RG nº ${coletado.representanteRg.trim()}`,
+        coletado.representanteCpf?.trim() && `CPF nº ${coletado.representanteCpf.trim()}`,
+      ].filter(Boolean);
+      parts.push(repId.length ? `neste ato representada por ${rep}, portador(a) do ${repId.join(' e do ')}` : `neste ato representada por ${rep}`);
+    }
+    return [...parts.filter(Boolean), ...contato].join(', ');
+  }
+
+  // PF
+  const parts: string[] = [nome];
+  if (coletado.nacionalidade?.trim()) parts.push(coletado.nacionalidade.trim());
+  if (coletado.profissao?.trim()) parts.push(coletado.profissao.trim());
+  const idParts = [
+    coletado.rg?.trim() && `portador(a) do RG nº ${coletado.rg.trim()}`,
+    doc && `inscrito(a) no CPF nº ${doc}`,
+  ].filter(Boolean);
+  if (idParts.length) parts.push(idParts.join(' e '));
+  if (enderecoStr) parts.push(`residente e domiciliado(a) em ${enderecoStr}`);
+  return [...parts.filter(Boolean), ...contato].join(', ');
 }
 
 /** String de pagamento ÚNICA e coerente (à vista | parcelado), consumida no resumo e na cláusula 4.1. */
@@ -193,6 +255,12 @@ export function buildContractData(input: BuildContractDataInput): Record<string,
       condicoesLegado: coletado.condicoesPagamento,
       formaLead: lead.formaPagamentoNegociada,
       totalCents: valorCents,
+    }),
+    qualificacao_contratante: buildQualificacaoContratante({
+      coletado,
+      enderecoStr: endereco.concatenado,
+      email: lead.email,
+      whatsapp: lead.whatsappE164,
     }),
     prazo: coletado.prazo?.trim() || PRAZO_DEFAULT,
     endereco: endereco.concatenado,
