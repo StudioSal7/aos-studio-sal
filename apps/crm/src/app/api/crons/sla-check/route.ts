@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   // Idle in Phase 1. SLA rules will be implemented in Phase 1.5 when the client
   // has enough historical data to define appropriate idle thresholds.
-  console.log('[sla-check] cron ran at', new Date().toISOString(), '— idle (no SLA rules)');
+  console.warn('[sla-check] cron ran at', new Date().toISOString(), '— idle (no SLA rules)');
 
   return NextResponse.json({ ok: true, message: 'idle — no SLA rules configured' });
 }

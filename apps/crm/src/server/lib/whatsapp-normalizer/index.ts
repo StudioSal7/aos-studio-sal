@@ -37,7 +37,7 @@ export function normalizeWhatsapp(input: string | null | undefined): Normalizati
 
   // Excel coerces long numbers to scientific notation (e.g., "9,71971E+15").
   // Recovering original digits is unsafe; flag for manual review.
-  if (/\d[eE][+\-]?\d/.test(trimmed)) {
+  if (/\d[eE][+-]?\d/.test(trimmed)) {
     return { ok: false, reason: 'scientific_notation' };
   }
 

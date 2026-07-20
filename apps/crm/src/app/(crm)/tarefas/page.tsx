@@ -79,8 +79,8 @@ export default function TarefasPage() {
             </P>
             <P>
               O site / link da bio é o gargalo #1. Falta uma entrada que oriente a pessoa ao produto
-              certo. A aposta é a bio interativa / quiz de qualificação (a "iniciativa do formulário
-              inteligente"): em vez de linktree, um fluxo que pergunta, engaja, faz leitura sensível
+              certo. A aposta é a bio interativa / quiz de qualificação (a “iniciativa do formulário
+              inteligente”): em vez de linktree, um fluxo que pergunta, engaja, faz leitura sensível
               da pessoa no tom de voz da Giulia, entrega algo ao final (ex.: dossiê/teste) e a
               encaminha ao produto/comunidade certos. Rodrigo monta a prévia; Giulia revisa com o
               olhar sensível.
@@ -113,7 +113,7 @@ export default function TarefasPage() {
             <UL
               items={[
                 <>Ano difícil/retração; Hotmart reportou queda de faturamento em todos os nichos de 2024→2025.</>,
-                <>Mercado "machucado": muitos leads já compraram mentorias ruins e pediram reembolso → medo de comprar de novo. Diferenciação está em prometer com entrega real ("sei que foi difícil, mas somos diferentes").</>,
+                <>Mercado “machucado”: muitos leads já compraram mentorias ruins e pediram reembolso → medo de comprar de novo. Diferenciação está em prometer com entrega real (“sei que foi difícil, mas somos diferentes”).</>,
                 <>Em crise, o dinheiro migra para produtos muito baratos OU muito caros (e presenciais); pior nicho é a classe média. Daí a aposta em produtos de entrada baratos.</>,
                 <>A transformação da mentoria é intangível: precisa virar métrica/depoimento de faturamento (antes/depois), equilibrado com depoimentos emocionais.</>,
                 <>Referência recorrente: Luana Carolina — pragmatismo de venda (VSL/página conversa-L, depoimentos de faturamento, mostrar a própria rotina/ferramenta nos stories).</>,
@@ -126,16 +126,16 @@ export default function TarefasPage() {
               Alcance de stories baixo (~1–1,5k de uma base de ~100k) — o público dela consome
               vídeo, não stories. Estratégia: aprofundar o relacionamento com quem já engaja (não
               perseguir alcance), instigar respostas e usar a associação aspiracional (mostrar
-              rotina/Notion). Criativos: recriar o vídeo "de mil a 100 mil", postar o vídeo "criar
-              conteúdo é um saco" com CTA + número concreto, testar criativo de imagem.
+              rotina/Notion). Criativos: recriar o vídeo “de mil a 100 mil”, postar o vídeo “criar
+              conteúdo é um saco” com CTA + número concreto, testar criativo de imagem.
             </P>
           </Block>
 
           <Block title="O que precisa ser preservado em qualquer cenário">
             <UL
               items={[
-                <>A "voz" da Giulia — cadência, vocabulário, universo metafórico, maneirismos. A diferença real está aqui, não na estrutura.</>,
-                <>O "olhar amoroso" — tirar a pessoa do modo sobrevivência e levá-la a um estado de segurança. É o "molho" além do método.</>,
+                <>A “voz” da Giulia — cadência, vocabulário, universo metafórico, maneirismos. A diferença real está aqui, não na estrutura.</>,
+                <>O “olhar amoroso” — tirar a pessoa do modo sobrevivência e levá-la a um estado de segurança. É o “molho” além do método.</>,
                 <>A relação 1:1 com clientes — analogia Michelangelo/Davi: enxergar o potencial humano na pessoa. Esse é o serviço real.</>,
               ]}
             />

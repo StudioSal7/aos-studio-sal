@@ -5,7 +5,6 @@ import { ptBR } from 'date-fns/locale';
 import { requireAuth } from '@/server/auth';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { PeriodFilter } from '@/components/ui/period-filter';
 import { CHART_COLORS } from '@/components/charts/chart-theme';
 import { HorizontalBarChart } from '@/components/charts/horizontal-bar-chart';

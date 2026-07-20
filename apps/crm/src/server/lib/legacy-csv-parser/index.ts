@@ -390,31 +390,6 @@ export function parseLegacyCsvText(
 
 // ---- Helpers ----
 
-function parseCsvLine(line: string): string[] {
-  const fields: string[] = [];
-  let current = '';
-  let inQuote = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!;
-    if (ch === '"') {
-      if (inQuote && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuote = !inQuote;
-      }
-    } else if (ch === ',' && !inQuote) {
-      fields.push(current);
-      current = '';
-    } else {
-      current += ch;
-    }
-  }
-  fields.push(current);
-  return fields;
-}
-
 // Parses an entire CSV text into records, respecting quoted fields that may span newlines.
 function parseCsvRecords(text: string): string[][] {
   const records: string[][] = [];
