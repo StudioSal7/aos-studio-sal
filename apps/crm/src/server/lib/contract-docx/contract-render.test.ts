@@ -109,3 +109,27 @@ describe('render do contrato — qualificação PF/PJ (FIX 5)', () => {
     expect(text).not.toContain('pessoa jurídica');
   });
 });
+
+describe('render do contrato — cláusula de não-participação (FIX 3)', () => {
+  it('mentoria: cláusula verbatim presente', () => {
+    const text = renderToText('mentoria', {});
+    expect(text).toContain(
+      'A não participação da CLIENTE nas atividades propostas, nos encontros ou na utilização da plataforma, não será motivo de redução no valor do contrato, independentemente de sua motivação.',
+    );
+  });
+});
+
+describe('render do contrato — 2 testemunhas no bloco de assinatura (FIX 4)', () => {
+  for (const tipo of TIPOS) {
+    it(`${tipo}: TESTEMUNHA 1 e 2, com slots Nome/CPF em branco (sem nomes hard-coded)`, () => {
+      const text = renderToText(tipo, {});
+      expect(text).toContain('TESTEMUNHA 1');
+      expect(text).toContain('TESTEMUNHA 2');
+      expect(text).toContain('CONTRATANTE');
+      expect(text).toContain('CONTRATADA');
+      // slots em branco — não pode vazar nome de testemunha real de contrato antigo
+      expect(text).not.toContain('Renata Torelli');
+      expect(text).not.toContain('Julia Machado Shiomi');
+    });
+  }
+});

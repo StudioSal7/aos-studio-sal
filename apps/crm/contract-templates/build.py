@@ -91,7 +91,7 @@ def resumo_table(doc, objeto):
     doc.add_paragraph()
 
 
-def build(titulo, objeto_resumo, objeto_texto, servicos_fn, out_path):
+def build(titulo, objeto_resumo, objeto_texto, servicos_fn, out_path, nao_participacao=False):
     doc = Document()
     s = doc.sections[0]
     s.left_margin = Cm(2.5)
@@ -131,6 +131,9 @@ def build(titulo, objeto_resumo, objeto_texto, servicos_fn, out_path):
     body(doc, "4.2. A não quitação nos prazos pactuados implica suspensão dos serviços, multa de 10% (dez por cento) e juros de 1% (um por cento) ao mês.")
     body(doc, "4.3. Os pagamentos devem ser comprovados por e-mail ou WhatsApp em até 24 horas — é responsabilidade da CLIENTE essa comprovação.")
     body(doc, "4.4. Em caso de atraso superior a 30 (trinta) dias, o contrato poderá ser rescindido por justa causa pela STUDIO, retidos os materiais já elaborados até a quitação.")
+    if nao_participacao:
+        # Verbatim do contrato-modelo (Mentoria Salto) — refere encontros/plataforma.
+        body(doc, "4.5. A não participação da CLIENTE nas atividades propostas, nos encontros ou na utilização da plataforma, não será motivo de redução no valor do contrato, independentemente de sua motivação.")
 
     clause(doc, "5. VIGÊNCIA")
     body(doc, "5.1. Este contrato é válido por {prazo} contados da data de assinatura. O encerramento da vigência não exclui a obrigação de pagar parcelas vencidas posteriormente.")
@@ -172,6 +175,10 @@ def _sig_line(doc, *linhas):
 def _signatures(doc):
     _sig_line(doc, "_" * 40, "{nome_completo}", "CONTRATANTE")
     _sig_line(doc, "_" * 40, "Studio Sal LTDA — Giulia Salvatore Tebet Moreira", "CONTRATADA")
+    # Duas testemunhas (CPC art. 784, IV — sem elas o instrumento não é título
+    # executivo extrajudicial). Slots em branco, sem nomes hard-coded.
+    _sig_line(doc, "_" * 40, "Nome:", "CPF:", "TESTEMUNHA 1")
+    _sig_line(doc, "_" * 40, "Nome:", "CPF:", "TESTEMUNHA 2")
 
 
 # ---- Serviços por tipo (das descrições reais dos contratos) ----
@@ -212,6 +219,7 @@ build(
     "CLIENTE, que deverá participar ativamente do desenvolvimento do seu material.",
     servicos_mentoria,
     os.path.join(OUT_DIR, "mentoria.docx"),
+    nao_participacao=True,
 )
 
 build(
