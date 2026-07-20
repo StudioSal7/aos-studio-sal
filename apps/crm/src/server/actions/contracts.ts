@@ -11,7 +11,7 @@ import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import type { ProductTipo } from '@repo/db/schema';
 import { requireAuth, requireRole } from '@/server/auth';
-import { uploadContractTemplate } from '@/server/lib/contract-storage';
+import { uploadContractTemplate, CONTRACT_TIPOS } from '@/server/lib/contract-storage';
 import type { ContractCollectedData } from '@/server/lib/contract-data-builder';
 import type { ActionResult } from './leads';
 
@@ -75,7 +75,7 @@ export async function uploadContractTemplateAction(formData: FormData): Promise<
   const tipo = formData.get('tipo');
   const file = formData.get('file');
 
-  if (tipo !== 'mentoria' && tipo !== 'infoproduto') {
+  if (typeof tipo !== 'string' || !CONTRACT_TIPOS.includes(tipo as ProductTipo)) {
     return { ok: false, error: 'Tipo de produto inválido.' };
   }
   if (!(file instanceof File) || file.size === 0) {

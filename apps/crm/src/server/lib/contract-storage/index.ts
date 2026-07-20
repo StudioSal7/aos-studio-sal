@@ -54,15 +54,17 @@ export type ContractTemplateStatus = {
   updatedAt: string | null;
 };
 
-const ALL_TIPOS: ProductTipo[] = ['mentoria', 'infoproduto'];
+// Só os tipos de produto que têm contrato assinado. infoproduto é venda
+// self-serve (Método SAL, Central de Conteúdo) — não gera contrato.
+export const CONTRACT_TIPOS: ProductTipo[] = ['mentoria', 'assessoria', 'branding_pessoal'];
 
-/** Status dos templates pros dois tipos — usado no /admin/contratos. */
+/** Status dos templates pros tipos com contrato — usado no /admin/contratos. */
 export async function listContractTemplatesStatus(): Promise<ContractTemplateStatus[]> {
   const admin = createAdminClient();
   const { data } = await admin.storage.from(CONTRACT_TEMPLATES_BUCKET).list('', { limit: 100 });
   const byName = new Map((data ?? []).map((f) => [f.name, f]));
 
-  return ALL_TIPOS.map((tipo) => {
+  return CONTRACT_TIPOS.map((tipo) => {
     const file = byName.get(templatePathForTipo(tipo));
     return {
       tipo,

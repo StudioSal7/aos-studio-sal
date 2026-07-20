@@ -72,7 +72,14 @@ export const roleplayDifficultyEnum = pgEnum('roleplay_difficulty', [
 ]);
 
 // Catálogo de produtos — habilita cálculo futuro de revenue-share/comissão (Fatia 6)
-export const productTipoEnum = pgEnum('product_tipo', ['mentoria', 'infoproduto']);
+// e seleciona qual template de contrato usar. mentoria/assessoria/branding_pessoal
+// são serviços com contrato assinado; infoproduto é venda self-serve (sem contrato).
+export const productTipoEnum = pgEnum('product_tipo', [
+  'mentoria',
+  'infoproduto',
+  'assessoria',
+  'branding_pessoal',
+]);
 export type ProductTipo = (typeof productTipoEnum.enumValues)[number];
 
 // Formulários self-hosted (Typeform-style) — substituem o Respondi.app

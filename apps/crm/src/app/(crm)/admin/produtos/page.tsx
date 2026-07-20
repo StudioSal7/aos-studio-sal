@@ -3,13 +3,9 @@ import { requireAuth } from '@/server/auth';
 import { listProducts } from '@/server/queries/products';
 import { PageHeader } from '@/components/ui/page-header';
 import { formatCents } from '@/lib/money';
+import { productTipoLabel } from '@/lib/product-tipo';
 import { ProductFormModal } from './_components/product-form-modal';
 import { ToggleActiveButton } from './_components/toggle-active-button';
-
-const TIPO_LABEL: Record<string, string> = {
-  mentoria: 'mentoria',
-  infoproduto: 'infoproduto',
-};
 
 export default async function ProdutosPage() {
   const auth = await requireAuth();
@@ -47,7 +43,7 @@ export default async function ProdutosPage() {
                   <tr key={p.id} className="border-b border-line last:border-0">
                     <td className="px-6 py-3 text-body text-ink">{p.displayName}</td>
                     <td className="px-6 py-3 text-micro text-ink-muted">
-                      {p.tipo ? (TIPO_LABEL[p.tipo] ?? p.tipo) : '—'}
+                      {productTipoLabel(p.tipo)}
                     </td>
                     <td className="px-6 py-3 text-body tabular-nums text-ink">
                       {formatCents(p.valorCents)}

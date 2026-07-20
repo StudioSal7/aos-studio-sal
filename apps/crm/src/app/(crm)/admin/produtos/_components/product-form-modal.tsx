@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { createProductAction, updateProductAction } from '@/server/actions/products';
 import type { ProductRow } from '@/server/queries/products';
+import type { ProductTipo } from '@repo/db/schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +24,7 @@ export function ProductFormModal(props: Props) {
   const initial = isEdit ? props.product : undefined;
 
   const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
-  const [tipo, setTipo] = useState<'mentoria' | 'infoproduto'>(initial?.tipo ?? 'mentoria');
+  const [tipo, setTipo] = useState<ProductTipo>(initial?.tipo ?? 'mentoria');
   const [valor, setValor] = useState(reaisInputFromCents(initial?.valorCents));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -89,9 +90,11 @@ export function ProductFormModal(props: Props) {
             <Select
               id="produto-tipo"
               value={tipo}
-              onChange={(e) => setTipo(e.target.value as 'mentoria' | 'infoproduto')}
+              onChange={(e) => setTipo(e.target.value as ProductTipo)}
             >
               <option value="mentoria">Mentoria</option>
+              <option value="assessoria">Assessoria</option>
+              <option value="branding_pessoal">Branding pessoal</option>
               <option value="infoproduto">Infoproduto</option>
             </Select>
           </div>

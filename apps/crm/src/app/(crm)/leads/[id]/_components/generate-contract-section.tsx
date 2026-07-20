@@ -13,16 +13,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Modal } from '@/components/ui/modal';
+import { productTipoLabel } from '@/lib/product-tipo';
 
 export type GenerateContractSectionProps = {
   leadId: string;
   isPaid: boolean;
   contracts: Array<{ id: string; tipo: string; createdAt: Date }>;
-};
-
-const TIPO_LABEL: Record<string, string> = {
-  mentoria: 'mentoria',
-  infoproduto: 'infoproduto',
 };
 
 const EMPTY_COLETADO: ContractCollectedData = {
@@ -92,7 +88,7 @@ export function GenerateContractSection({ leadId, isPaid, contracts }: GenerateC
               className="flex items-center justify-between gap-4 border-b border-line py-2 text-body text-ink last:border-0"
             >
               <span>
-                {TIPO_LABEL[c.tipo] ?? c.tipo} ·{' '}
+                {productTipoLabel(c.tipo)} ·{' '}
                 <span className="text-micro text-ink-muted normal-case tracking-normal">
                   {new Date(c.createdAt).toLocaleString('pt-BR', {
                     timeZone: 'America/Sao_Paulo',

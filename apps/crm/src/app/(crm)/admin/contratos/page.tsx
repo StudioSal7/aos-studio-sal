@@ -2,12 +2,8 @@ import { redirect } from 'next/navigation';
 import { requireAuth } from '@/server/auth';
 import { listContractTemplates } from '@/server/queries/contracts';
 import { PageHeader } from '@/components/ui/page-header';
+import { productTipoLabel } from '@/lib/product-tipo';
 import { UploadTemplateForm } from './_components/upload-template-form';
-
-const TIPO_LABEL: Record<string, string> = {
-  mentoria: 'mentoria',
-  infoproduto: 'infoproduto',
-};
 
 export default async function ContratosPage() {
   const auth = await requireAuth();
@@ -40,7 +36,7 @@ export default async function ContratosPage() {
               {templates.map((t) => (
                 <tr key={t.tipo} className="border-b border-line last:border-0">
                   <td className="px-6 py-3 text-body text-ink">
-                    {TIPO_LABEL[t.tipo] ?? t.tipo}
+                    {productTipoLabel(t.tipo)}
                   </td>
                   <td className="px-6 py-3 text-micro text-ink-muted">
                     {t.exists ? 'enviado' : 'nenhum template ainda'}
