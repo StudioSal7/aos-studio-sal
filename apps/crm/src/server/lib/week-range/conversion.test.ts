@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conversionPct, weeklyConversions } from './conversion';
+import { conversionPct, weekDelta, weeklyConversions } from './conversion';
 
 describe('conversionPct', () => {
   it('taxa inteira arredondada', () => {
@@ -29,5 +29,24 @@ describe('weeklyConversions', () => {
 
   it('propaga null onde a etapa anterior é 0', () => {
     expect(weeklyConversions([4, 0, 0])).toEqual([0, null]);
+  });
+});
+
+describe('weekDelta', () => {
+  it('up quando o valor atual é maior', () => {
+    expect(weekDelta(2, 5)).toBe('up');
+  });
+
+  it('down quando o valor atual é menor', () => {
+    expect(weekDelta(5, 2)).toBe('down');
+  });
+
+  it('flat quando os valores são iguais', () => {
+    expect(weekDelta(3, 3)).toBe('flat');
+  });
+
+  it('null quando não há semana anterior (1ª coluna do grid)', () => {
+    expect(weekDelta(undefined, 3)).toBeNull();
+    expect(weekDelta(null, 3)).toBeNull();
   });
 });

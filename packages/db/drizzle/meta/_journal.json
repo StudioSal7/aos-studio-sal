@@ -127,6 +127,13 @@
       "when": 1784590642286,
       "tag": "0017_agenda_google_renata",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784598352292,
+      "tag": "0018_metric_targets",
+      "breakpoints": true
     }
   ]
 }

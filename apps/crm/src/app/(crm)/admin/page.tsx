@@ -4,8 +4,11 @@ import { isNull } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import { PageHeader } from '@/components/ui/page-header';
+import { METRIC_REGISTRY } from '@/server/lib/metric-registry/index';
+import { getMetricTargets } from '@/server/queries/metric-targets';
 import { InviteUserForm } from './_components/invite-user-form';
 import { GoogleAgendaSection } from './_components/google-agenda-section';
+import { MetricTargetRowForm } from './_components/metric-target-row-form';
 
 export default async function AdminPage({
   searchParams,
@@ -50,6 +53,8 @@ export default async function AdminPage({
     .select()
     .from(schema.leadLossReasons)
     .orderBy(schema.leadLossReasons.displayName);
+
+  const metricTargets = await getMetricTargets();
 
   return (
     <div className="flex flex-col">
@@ -149,6 +154,55 @@ export default async function AdminPage({
                     <td className="px-6 py-3 text-body text-ink">{r.displayName}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-h3 text-ink">metas do dashboard.</h2>
+          <p className="mb-4 text-micro text-ink-muted">
+            semáforo das métricas de taxa/eficiência: verde ▲ bate a meta · amarelo ● dentro da
+            margem &quot;quase&quot; · vermelho ▼ abaixo · sem meta = cinza (nada colore até
+            definir).
+          </p>
+          <div className="overflow-hidden border border-line bg-paper">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-line bg-canvas">
+                  <th className="px-6 py-3 text-left text-micro text-ink-muted">Métrica</th>
+                  <th className="px-6 py-3 text-left text-micro text-ink-muted">Comparador</th>
+                  <th className="px-6 py-3 text-left text-micro text-ink-muted">Meta</th>
+                  <th className="px-6 py-3 text-left text-micro text-ink-muted">
+                    Margem &quot;quase&quot;
+                  </th>
+                  <th className="px-6 py-3 text-left text-micro text-ink-muted">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {METRIC_REGISTRY.map((metric) => {
+                  const target = metricTargets.get(metric.key) ?? null;
+                  return (
+                    <MetricTargetRowForm
+                      key={metric.key}
+                      metric={{
+                        key: metric.key,
+                        label: metric.label,
+                        unit: metric.unit,
+                        defaultComparator: metric.defaultComparator,
+                      }}
+                      target={
+                        target
+                          ? {
+                              comparator: target.comparator,
+                              threshold: target.threshold,
+                              yellowMargin: target.yellowMargin,
+                            }
+                          : null
+                      }
+                    />
+                  );
+                })}
               </tbody>
             </table>
           </div>

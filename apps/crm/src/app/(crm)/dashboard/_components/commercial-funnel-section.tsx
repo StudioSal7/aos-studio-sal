@@ -2,11 +2,22 @@
 // Etapas coletadas (form/reuniões/proposta/venda) mostram número real; posts
 // feitos e visualizações geradas (dependem de Meta Ads/GA4, fase posterior)
 // aparecem com barra hachurada + tag "em manutenção" pra o funil parecer
-// completo na apresentação. Mockup + 5 ajustes aprovados pelo André em 13/07.
+// completo na apresentação.
+//
+// O período vem do seletor no topo da página (via props counts/ttfc já
+// filtrados + periodLabel). As taxas "% avançam" cujo par de etapas tem chave
+// no metric-registry ganham semáforo por meta (form → agendada pula etapas do
+// kanban e fica neutra de propósito — não inventar chave).
 
 import { Card } from '@/components/ui/card';
-import { PeriodFilter } from '@/components/ui/period-filter';
-import { DATE_RANGE_OPTIONS, type DateRangeOption } from '@/server/lib/date-range/index';
+import {
+  evaluateMetric,
+  trafficLightGlyph,
+  type MetricTargetInput,
+  type TrafficLight,
+} from '@/server/lib/metric-target-evaluator/index';
+import type { MetricKey } from '@/server/lib/metric-registry/index';
+import { weeklyConversions } from '@/server/lib/week-range/conversion';
 import type { CommercialFunnelCounts } from '@/server/queries/commercial-funnel';
 
 function MaintenanceTag() {
@@ -19,18 +30,34 @@ function MaintenanceTag() {
 
 type FunnelStage =
   | { label: string; kind: 'maintenance' }
-  | { label: string; kind: 'collected' | 'won'; value: number };
+  | {
+      label: string;
+      kind: 'collected' | 'won';
+      value: number;
+      // Chave do registry para a transição etapa_anterior → esta etapa.
+      conversionKey?: MetricKey;
+    };
+
+const TEXT_BY_STATUS: Record<TrafficLight, string> = {
+  green: 'text-leaf',
+  yellow: 'text-wood',
+  red: 'text-clay',
+  gray: 'text-ink-muted',
+};
 
 function FunnelRow({
   stage,
   widthPct,
   conversionPct,
+  conversionStatus,
 }: {
   stage: FunnelStage;
   widthPct: number;
   conversionPct: number | null;
+  conversionStatus: TrafficLight;
 }) {
   const isMaintenance = stage.kind === 'maintenance';
+  const glyph = trafficLightGlyph(conversionStatus);
 
   return (
     <div>
@@ -66,8 +93,10 @@ function FunnelRow({
         </div>
       </div>
       {conversionPct != null && (
-        <p className="ml-[166px] mt-0.5 text-[11px] normal-case tracking-normal text-ink-muted">
-          ↓ {conversionPct}% avançam
+        <p
+          className={`ml-[166px] mt-0.5 text-[11px] normal-case tracking-normal ${TEXT_BY_STATUS[conversionStatus]}`}
+        >
+          {glyph && <span className="mr-1 text-[10px]">{glyph}</span>}↓ {conversionPct}% avançam
         </p>
       )}
     </div>
@@ -82,48 +111,89 @@ function formatDuration(seconds: number): string {
 
 export function CommercialFunnelSection({
   counts,
-  range,
   ttfc,
+  targets,
+  periodLabel,
 }: {
   counts: CommercialFunnelCounts;
-  range: DateRangeOption;
   ttfc: { medianSeconds: number | null; withinSlaPct: number | null; count: number };
+  targets: Map<string, MetricTargetInput>;
+  periodLabel: string;
 }) {
   const stages: FunnelStage[] = [
     { label: 'posts feitos', kind: 'maintenance' },
     { label: 'visualizações geradas', kind: 'maintenance' },
     { label: 'formulários enviados', kind: 'collected', value: counts.formResponses },
     { label: 'reuniões agendadas', kind: 'collected', value: counts.meetingsScheduled },
-    { label: 'reuniões comparecidas', kind: 'collected', value: counts.meetingsAttended },
-    { label: 'propostas realizadas', kind: 'collected', value: counts.proposalsSent },
-    { label: 'vendas feitas', kind: 'won', value: counts.salesWon },
+    {
+      label: 'reuniões comparecidas',
+      kind: 'collected',
+      value: counts.meetingsAttended,
+      conversionKey: 'show_rate',
+    },
+    {
+      label: 'propostas realizadas',
+      kind: 'collected',
+      value: counts.proposalsSent,
+      conversionKey: 'conv_meeting_to_proposal',
+    },
+    {
+      label: 'vendas feitas',
+      kind: 'won',
+      value: counts.salesWon,
+      conversionKey: 'conv_proposal_to_sale',
+    },
   ];
 
   const collectedValues = stages
     .filter((s): s is Extract<FunnelStage, { kind: 'collected' | 'won' }> => s.kind !== 'maintenance')
     .map((s) => s.value);
   const maxValue = Math.max(1, ...collectedValues);
+  // Taxas entre etapas coletadas adjacentes — mesma fórmula do grid semanal
+  // (week-range/conversion), pra não divergir se o arredondamento/tratamento
+  // de denominador 0 mudar lá. Comprimento = collectedValues.length - 1.
+  const collectedConversions = weeklyConversions(collectedValues);
 
-  let prevCollected: number | null = null;
+  const ttfcMedianHours = ttfc.medianSeconds != null ? ttfc.medianSeconds / 3600 : null;
+  const ttfcStatus = evaluateMetric(ttfcMedianHours, targets.get('ttfc_median_hours') ?? null);
+  const ttfcSlaStatus = evaluateMetric(ttfc.withinSlaPct, targets.get('ttfc_within_24h_pct') ?? null);
+  const ttfcSlaGlyph = trafficLightGlyph(ttfcSlaStatus);
+
+  let collectedIndex = -1;
 
   return (
     <section>
       <div className="flex items-center justify-between border-b border-line pb-4">
         <h2 className="text-h3 text-ink">funil de vendas.</h2>
-        <PeriodFilter current={range} options={DATE_RANGE_OPTIONS} />
+        <span className="text-micro text-ink-muted">{periodLabel}</span>
       </div>
 
       <div className="min-w-0 space-y-2 overflow-hidden pt-6">
         {stages.map((stage) => {
           const widthPct = stage.kind === 'maintenance' ? 100 : Math.max(4, Math.round((stage.value / maxValue) * 100));
-          let conversionPct: number | null = null;
+          let stageConversionPct: number | null = null;
+          let conversionStatus: TrafficLight = 'gray';
           if (stage.kind !== 'maintenance') {
-            if (prevCollected != null && prevCollected > 0) {
-              conversionPct = Math.round((stage.value / prevCollected) * 100);
+            collectedIndex += 1;
+            if (collectedIndex > 0) {
+              stageConversionPct = collectedConversions[collectedIndex - 1] ?? null;
+              if (stage.conversionKey && stageConversionPct !== null) {
+                conversionStatus = evaluateMetric(
+                  stageConversionPct,
+                  targets.get(stage.conversionKey) ?? null,
+                );
+              }
             }
-            prevCollected = stage.value;
           }
-          return <FunnelRow key={stage.label} stage={stage} widthPct={widthPct} conversionPct={conversionPct} />;
+          return (
+            <FunnelRow
+              key={stage.label}
+              stage={stage}
+              widthPct={widthPct}
+              conversionPct={stageConversionPct}
+              conversionStatus={conversionStatus}
+            />
+          );
         })}
       </div>
 
@@ -136,13 +206,30 @@ export function CommercialFunnelSection({
         </Card>
         <Card className="min-w-0 overflow-hidden">
           <p className="text-micro text-ink-muted">tempo médio de primeiro atendimento</p>
-          <p className="mt-3 break-words text-[26px] font-serif normal-case leading-[1.15] tracking-tight text-ink">
+          <p
+            className={`mt-3 break-words text-[26px] font-serif normal-case leading-[1.15] tracking-tight ${
+              ttfcStatus === 'gray' ? 'text-ink' : TEXT_BY_STATUS[ttfcStatus]
+            }`}
+          >
+            {trafficLightGlyph(ttfcStatus) && (
+              <span className="mr-1.5 text-[14px]">{trafficLightGlyph(ttfcStatus)}</span>
+            )}
             {ttfc.medianSeconds != null ? formatDuration(ttfc.medianSeconds) : '—'}
           </p>
           <p className="mt-1 text-micro text-ink-muted">
-            {ttfc.count > 0
-              ? `mediana · ${ttfc.withinSlaPct}% em 24h · base ${ttfc.count}`
-              : 'sem dados no período'}
+            {ttfc.count > 0 ? (
+              <>
+                mediana ·{' '}
+                {ttfcSlaGlyph && (
+                  <span className={`text-[10px] ${TEXT_BY_STATUS[ttfcSlaStatus]}`}>
+                    {ttfcSlaGlyph}{' '}
+                  </span>
+                )}
+                {ttfc.withinSlaPct}% em 24h · base {ttfc.count}
+              </>
+            ) : (
+              'sem dados no período'
+            )}
           </p>
         </Card>
         <Card className="min-w-0 overflow-hidden">
