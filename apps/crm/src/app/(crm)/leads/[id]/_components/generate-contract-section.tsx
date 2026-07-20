@@ -143,27 +143,20 @@ export function GenerateContractSection({ leadId, isPaid, contracts }: GenerateC
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="contrato-cpf-cnpj">CPF / CNPJ</Label>
-              <Input
-                id="contrato-cpf-cnpj"
-                value={coletado.cpfCnpj ?? ''}
-                onChange={(e) => setColetado((c) => ({ ...c, cpfCnpj: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="contrato-rg">RG {isPJ && <span className="text-ink-muted">(pessoa física)</span>}</Label>
-              <Input
-                id="contrato-rg"
-                value={coletado.rg ?? ''}
-                onChange={(e) => setColetado((c) => ({ ...c, rg: e.target.value }))}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="contrato-cpf-cnpj">
+              CPF / CNPJ{' '}
+              <span className="text-ink-muted">{isPJ ? '· pessoa jurídica' : '· pessoa física'}</span>
+            </Label>
+            <Input
+              id="contrato-cpf-cnpj"
+              value={coletado.cpfCnpj ?? ''}
+              onChange={(e) => setColetado((c) => ({ ...c, cpfCnpj: e.target.value }))}
+            />
           </div>
 
           {isPJ ? (
-            <div className="space-y-3 rounded-none border border-line bg-canvas p-3">
+            <div className="space-y-3 border border-line bg-canvas p-3">
               <p className="text-micro text-ink-muted">representante legal (pessoa jurídica)</p>
               <div className="space-y-2">
                 <Label htmlFor="contrato-rep-nome">Nome do representante</Label>
@@ -193,7 +186,15 @@ export function GenerateContractSection({ leadId, isPaid, contracts }: GenerateC
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="contrato-rg">RG</Label>
+                <Input
+                  id="contrato-rg"
+                  value={coletado.rg ?? ''}
+                  onChange={(e) => setColetado((c) => ({ ...c, rg: e.target.value }))}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="contrato-nacionalidade">Nacionalidade</Label>
                 <Input
