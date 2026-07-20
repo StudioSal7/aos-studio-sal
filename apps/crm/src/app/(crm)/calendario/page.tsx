@@ -6,6 +6,7 @@ import { toZonedTime } from 'date-fns-tz';
 import Link from 'next/link';
 import { cn } from '@repo/ui';
 import { PageHeader } from '@/components/ui/page-header';
+import { RenataWeekAgenda } from '@/app/(crm)/_components/renata-week-agenda';
 
 const SP_TZ = 'America/Sao_Paulo';
 
@@ -43,7 +44,8 @@ export default async function CalendarioPage() {
         title={`calendário — semana atual (${meetings.length} reuniões).`}
       />
 
-      <div className="p-8">
+      <div className="grid gap-8 p-8 lg:grid-cols-[1fr_380px]">
+        <div>
         {meetings.length === 0 ? (
           <p className="text-body text-ink-muted">
             Nenhuma reunião agendada para esta semana.
@@ -100,6 +102,11 @@ export default async function CalendarioPage() {
             ))}
           </div>
         )}
+        </div>
+
+        <aside className="self-start">
+          <RenataWeekAgenda />
+        </aside>
       </div>
     </div>
   );

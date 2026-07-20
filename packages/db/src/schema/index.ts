@@ -6,6 +6,7 @@ export * from './lead-objections';
 export * from './lead-sources';
 export * from './products';
 export * from './leads';
+export * from './google-accounts';
 export * from './meetings';
 export * from './lead-stage-history';
 export * from './lead-field-audit';

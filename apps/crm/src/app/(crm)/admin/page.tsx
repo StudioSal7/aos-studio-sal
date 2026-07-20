@@ -5,10 +5,29 @@ import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import { PageHeader } from '@/components/ui/page-header';
 import { InviteUserForm } from './_components/invite-user-form';
+import { GoogleAgendaSection } from './_components/google-agenda-section';
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ google?: string; google_error?: string }>;
+}) {
   const auth = await requireAuth();
   if (auth.role !== 'owner') redirect('/kanban');
+
+  const params = await searchParams;
+  const googleBanner = params.google === 'connected' ? 'connected' : (params.google_error ?? null);
+
+  // Nunca selecionar colunas de token — só metadados de exibição.
+  const googleAccounts = await db
+    .select({
+      id: schema.googleAccounts.id,
+      googleEmail: schema.googleAccounts.googleEmail,
+      isActive: schema.googleAccounts.isActive,
+      lastSyncError: schema.googleAccounts.lastSyncError,
+    })
+    .from(schema.googleAccounts)
+    .orderBy(schema.googleAccounts.createdAt);
 
   const users = await db
     .select({
@@ -68,6 +87,11 @@ export default async function AdminPage() {
             </table>
           </div>
           <InviteUserForm />
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-h3 text-ink">agenda google.</h2>
+          <GoogleAgendaSection accounts={googleAccounts} banner={googleBanner} />
         </section>
 
         <section>

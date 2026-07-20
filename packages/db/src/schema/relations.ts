@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { commercialAnalyses } from './commercial-analyses';
+import { googleAccounts } from './google-accounts';
 import { formFields } from './form-fields';
 import { formResponses } from './form-responses';
 import { forms } from './forms';
@@ -140,6 +141,18 @@ export const meetingsRelations = relations(meetings, ({ one }) => ({
     fields: [meetings.leadId],
     references: [leads.id],
   }),
+  googleAccount: one(googleAccounts, {
+    fields: [meetings.googleAccountId],
+    references: [googleAccounts.id],
+  }),
+}));
+
+export const googleAccountsRelations = relations(googleAccounts, ({ one, many }) => ({
+  connectedByUser: one(users, {
+    fields: [googleAccounts.connectedByUserId],
+    references: [users.id],
+  }),
+  meetings: many(meetings),
 }));
 
 export const leadStageHistoryRelations = relations(leadStageHistory, ({ one }) => ({

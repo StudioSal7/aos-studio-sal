@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, Calendar, CheckCircle2, XCircle, RotateCcw, FileText } from 'lucide-react';
 import { ConfirmMeetingForm } from './confirm-meeting-form';
+import { MeetingActions } from './meeting-actions';
 
 type Meeting = {
   id: string;
@@ -9,6 +10,7 @@ type Meeting = {
   status: 'agendada' | 'realizada' | 'nao_realizada' | 'reagendada' | 'cancelada';
   needsConfirmation: boolean;
   notesPostCall: string | null;
+  googleEventId: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 };
@@ -156,7 +158,14 @@ function MeetingItem({ meeting, leadId }: { meeting: Meeting; leadId: string }) 
       </div>
       <div className="flex-1 space-y-1">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-micro text-ink-muted">{label}</span>
+          <span className="text-micro text-ink-muted">
+            {label}
+            {meeting.status === 'agendada' && !meeting.googleEventId && (
+              <span className="ml-2 border border-line px-1.5 py-0.5 text-micro text-ink-muted/70">
+                sem evento google
+              </span>
+            )}
+          </span>
           <span className="text-micro text-ink-muted normal-case tracking-normal">
             {dateStr}
           </span>
@@ -177,6 +186,7 @@ function MeetingItem({ meeting, leadId }: { meeting: Meeting; leadId: string }) 
         {meeting.needsConfirmation && (
           <ConfirmMeetingForm meetingId={meeting.id} leadId={leadId} />
         )}
+        <MeetingActions meetingId={meeting.id} leadId={leadId} status={meeting.status} />
       </div>
     </li>
   );
