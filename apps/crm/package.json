@@ -22,7 +22,8 @@
     "update-aplicacao-sal-copy": "tsx --env-file=.env.local scripts/update-aplicacao-sal-copy.ts",
     "fix-shifted-lead": "tsx --env-file=.env.local scripts/fix-shifted-lead.ts",
     "backfill-application-received-at": "tsx --env-file=.env.local scripts/backfill-application-received-at.ts",
-    "backfill-first-contact-at": "tsx --env-file=.env.local scripts/backfill-first-contact-at.ts"
+    "backfill-first-contact-at": "tsx --env-file=.env.local scripts/backfill-first-contact-at.ts",
+    "upload-contract-templates": "tsx --env-file=.env.local scripts/upload-contract-templates.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -39,9 +40,11 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "docxtemplater": "^3.69.0",
     "drizzle-orm": "^0.36.4",
     "lucide-react": "^1.16.0",
     "next": "^15.0.3",
+    "pizzip": "^3.2.0",
     "postgres": "^3.4.5",
     "react": "^19.0.0-rc-66855b96-20241106",
     "react-dom": "^19.0.0-rc-66855b96-20241106",

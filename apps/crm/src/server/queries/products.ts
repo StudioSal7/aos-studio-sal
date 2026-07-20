@@ -1,12 +1,13 @@
 import { asc, eq } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
+import type { ProductTipo } from '@repo/db/schema';
 
 export type ProductRow = {
   id: string;
   slug: string;
   displayName: string;
-  tipo: 'mentoria' | 'infoproduto' | null;
+  tipo: ProductTipo | null;
   valorCents: number | null;
   active: boolean;
 };

@@ -4,6 +4,7 @@ import { formFields } from './form-fields';
 import { formResponses } from './form-responses';
 import { forms } from './forms';
 import { leadActionLog } from './lead-action-log';
+import { leadContracts } from './lead-contracts';
 import { leadFieldAudit } from './lead-field-audit';
 import { leadIntakeLog } from './lead-intake-log';
 import { leadLossReasons } from './lead-loss-reasons';
@@ -59,6 +60,7 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
   commercialAnalyses: many(commercialAnalyses),
   roleplaySessions: many(roleplaySessions),
   formResponses: many(formResponses),
+  contracts: many(leadContracts),
 }));
 
 export const formsRelations = relations(forms, ({ many }) => ({
@@ -81,6 +83,21 @@ export const formResponsesRelations = relations(formResponses, ({ one }) => ({
   lead: one(leads, {
     fields: [formResponses.leadId],
     references: [leads.id],
+  }),
+}));
+
+export const leadContractsRelations = relations(leadContracts, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadContracts.leadId],
+    references: [leads.id],
+  }),
+  produto: one(products, {
+    fields: [leadContracts.produtoId],
+    references: [products.id],
+  }),
+  createdByUser: one(users, {
+    fields: [leadContracts.createdBy],
+    references: [users.id],
   }),
 }));
 

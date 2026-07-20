@@ -72,7 +72,15 @@ export const roleplayDifficultyEnum = pgEnum('roleplay_difficulty', [
 ]);
 
 // Catálogo de produtos — habilita cálculo futuro de revenue-share/comissão (Fatia 6)
-export const productTipoEnum = pgEnum('product_tipo', ['mentoria', 'infoproduto']);
+// e seleciona qual template de contrato usar. mentoria/assessoria/branding_pessoal
+// são serviços com contrato assinado; infoproduto é venda self-serve (sem contrato).
+export const productTipoEnum = pgEnum('product_tipo', [
+  'mentoria',
+  'infoproduto',
+  'assessoria',
+  'branding_pessoal',
+]);
+export type ProductTipo = (typeof productTipoEnum.enumValues)[number];
 
 // Formulários self-hosted (Typeform-style) — substituem o Respondi.app
 export const formStatusEnum = pgEnum('form_status', [
@@ -98,3 +106,8 @@ export const formFieldTypeEnum = pgEnum('form_field_type', [
   'sim_nao',
   'encerramento',
 ]);
+
+// Contrato de fechamento (.docx gerado por mail-merge) — sempre nasce rascunho,
+// nunca auto-enviado. Um único status por ora; existe pra deixar espaço a
+// status futuros (ex: assinado) sem migration de tipo depois.
+export const contractStatusEnum = pgEnum('contract_status', ['rascunho']);

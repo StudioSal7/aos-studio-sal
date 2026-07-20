@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
+import type { ProductTipo } from '@repo/db/schema';
 import { requireAuth, requireRole } from '@/server/auth';
 import { slugify } from '@/components/forms/slug';
 import type { ActionResult } from './leads';
@@ -36,7 +37,7 @@ async function uniqueSlug(base: string): Promise<string> {
 
 type ProductInput = {
   displayName: string;
-  tipo: 'mentoria' | 'infoproduto';
+  tipo: ProductTipo;
   valorCents: number | null;
 };
 

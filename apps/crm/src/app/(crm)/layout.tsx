@@ -17,6 +17,7 @@ import {
   ListTodo,
   Dumbbell,
   FileText,
+  FileSignature,
   Package,
   type LucideIcon,
 } from 'lucide-react';
@@ -64,6 +65,13 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
                 href={'/admin/produtos' as Route<string>}
                 label="produtos."
                 icon={Package}
+              />
+            )}
+            {isOwner && (
+              <NavItem
+                href={'/admin/contratos' as Route<string>}
+                label="contratos."
+                icon={FileSignature}
               />
             )}
             <NavItem href="/tarefas" label="tarefas." icon={ListTodo} />
