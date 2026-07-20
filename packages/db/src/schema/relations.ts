@@ -30,6 +30,12 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
   produtoInteresse: one(products, {
     fields: [leads.produtoInteresseId],
     references: [products.id],
+    relationName: 'produtoInteresse',
+  }),
+  produtoFechado: one(products, {
+    fields: [leads.produtoFechadoId],
+    references: [products.id],
+    relationName: 'produtoFechado',
   }),
   motivoPerda: one(leadLossReasons, {
     fields: [leads.motivoPerdaId],

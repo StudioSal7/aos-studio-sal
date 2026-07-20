@@ -17,6 +17,7 @@ type UpdateStageInput = {
   motivoPerdaId?: string;
   valorProposto?: string;
   formaPagamentoNegociada?: string;
+  produtoFechadoId?: string;
 };
 
 export type ActionResult<T = void> =
@@ -53,6 +54,7 @@ export async function updateLeadStageAction(
     motivoPerdaId: input.motivoPerdaId,
     valorProposto: input.valorProposto,
     formaPagamentoNegociada: input.formaPagamentoNegociada,
+    produtoFechadoId: input.produtoFechadoId,
   });
 
   if (!validation.valid) {
@@ -72,6 +74,7 @@ export async function updateLeadStageAction(
         motivoPerdaId: input.motivoPerdaId ?? undefined,
         valorProposto: input.valorProposto ?? undefined,
         formaPagamentoNegociada: input.formaPagamentoNegociada ?? undefined,
+        produtoFechadoId: input.produtoFechadoId ?? undefined,
         firstContactAt:
           lead.firstContactAt == null && reachesFirstContact(targetStage.slug)
             ? now
@@ -99,6 +102,9 @@ export async function updateLeadStageAction(
         }),
         ...(input.formaPagamentoNegociada !== undefined && {
           formaPagamentoNegociada: { from: null, to: input.formaPagamentoNegociada },
+        }),
+        ...(input.produtoFechadoId !== undefined && {
+          produtoFechadoId: { from: null, to: input.produtoFechadoId },
         }),
       },
       changedBy: auth.userId,

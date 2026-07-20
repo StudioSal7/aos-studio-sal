@@ -45,6 +45,7 @@ const AUDITED_FIELDS = new Set([
   'closerId',
   'valorProposto',
   'formaPagamentoNegociada',
+  'produtoFechadoId',
   'motivoPerdaId',
   'marcadoFake',
   'deletedAt',

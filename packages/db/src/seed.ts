@@ -11,7 +11,7 @@
 
 import { sql } from 'drizzle-orm';
 import { db } from './client';
-import { leadLossReasons, leadSources, leadStages, roleplayScenarios } from './schema/index';
+import { leadLossReasons, leadSources, leadStages, products, roleplayScenarios } from './schema/index';
 
 const STAGES = [
   // Stage de entrada FRIO do Direcionador (bio-quiz). Lead de link-na-bio é mais
@@ -55,6 +55,16 @@ const SOURCES = [
   { slug: 'formulario', displayName: 'Formulário (web)' },
   { slug: 'bio-quiz', displayName: 'Direcionador (link-na-bio)' },
   { slug: 'outro', displayName: 'Outro' },
+];
+
+// Slugs do quiz "Direcionador" (bio.config.ts, repo giulia-salvatore-site) —
+// destrava produtoInteresseId, que hoje nasce morto porque products está vazia.
+// valorCents fica em branco de propósito (preço real não está disponível aqui
+// pra não inventar dado financeiro) — owner preenche via /admin/produtos.
+const PRODUCTS = [
+  { slug: 'metodo-sal', displayName: 'Método SAL', tipo: 'infoproduto' as const },
+  { slug: 'mentoria-salto', displayName: 'Mentoria Salto', tipo: 'mentoria' as const },
+  { slug: 'central-conteudo', displayName: 'Central de Conteúdo', tipo: 'infoproduto' as const },
 ];
 
 // Cenários de treino role-play SPIN — genéricos (lead simulado de branding
@@ -123,6 +133,14 @@ async function seed() {
       .insert(leadSources)
       .values(source)
       .onConflictDoNothing({ target: leadSources.slug });
+  }
+
+  console.warn('Seeding products...');
+  for (const product of PRODUCTS) {
+    await db
+      .insert(products)
+      .values(product)
+      .onConflictDoNothing({ target: products.slug });
   }
 
   console.warn('Seeding roleplay_scenarios...');

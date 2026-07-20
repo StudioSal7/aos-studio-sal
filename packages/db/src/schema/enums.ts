@@ -71,6 +71,9 @@ export const roleplayDifficultyEnum = pgEnum('roleplay_difficulty', [
   'dificil',
 ]);
 
+// Catálogo de produtos — habilita cálculo futuro de revenue-share/comissão (Fatia 6)
+export const productTipoEnum = pgEnum('product_tipo', ['mentoria', 'infoproduto']);
+
 // Formulários self-hosted (Typeform-style) — substituem o Respondi.app
 export const formStatusEnum = pgEnum('form_status', [
   'rascunho',

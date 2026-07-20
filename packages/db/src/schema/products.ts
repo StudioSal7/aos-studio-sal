@@ -1,4 +1,5 @@
 import { boolean, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { productTipoEnum } from './enums';
 
 export const products = pgTable('products', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -7,6 +8,9 @@ export const products = pgTable('products', {
   kind: text('kind'),
   ticketMin: integer('ticket_min'),
   ticketMax: integer('ticket_max'),
+  // Preço de catálogo em centavos — formatação só na exibição, nunca no dado.
+  valorCents: integer('valor_cents'),
+  tipo: productTipoEnum('tipo'),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
