@@ -17,6 +17,7 @@ import {
   ListTodo,
   Dumbbell,
   FileText,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 import { requireAuth } from '@/server/auth';
@@ -71,6 +72,16 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
           <CollapsibleNavGroup label="marketing">
             <NavItem href="/trafego" label="tráfego pago." icon={Target} />
           </CollapsibleNavGroup>
+
+          {isOwner && (
+            <CollapsibleNavGroup label="financeiro">
+              <NavItem
+                href={'/financeiro/config' as Route<string>}
+                label="configuração."
+                icon={Settings}
+              />
+            </CollapsibleNavGroup>
+          )}
         </nav>
 
         <div className="shrink-0 space-y-3 border-t border-line p-4">
