@@ -44,8 +44,8 @@ describe('ads-report / buildTrafegoReport', () => {
     row({ adId: 'a1', adName: 'AD01', spendCents: 80000, purchases: 5, purchaseValueCents: 300000, impressions: 20000, video3s: 6000, videoP25: 2000, videoP50: 1000, videoP75: 500, videoP95: 200 }),
     // quente: AD02 gasto de teste → volume_insuficiente
     row({ adId: 'a2', adName: 'AD02', campaignName: 'rmkt 30d', spendCents: 10000, impressions: 3000 }),
-    // fora de convenção → nao_classificado
-    row({ adId: 'a3', adName: 'AD03', campaignName: '[202601] [LP] [F] – Método SAL', spendCents: 70000, purchases: 1, purchaseValueCents: 100000 }),
+    // fora de convenção (sem token [F]/[Q] nem palavra frio/quente) → nao_classificado
+    row({ adId: 'a3', adName: 'AD03', campaignName: '[202601] [LP] – Método SAL', spendCents: 70000, purchases: 1, purchaseValueCents: 100000 }),
     // fora da janela de decisão (só tendência)
     row({ adId: 'a1', adName: 'AD01', date: '2026-06-20', spendCents: 50000, purchases: 2, purchaseValueCents: 150000 }),
   ];
@@ -72,7 +72,7 @@ describe('ads-report / buildTrafegoReport', () => {
   });
 
   it('campanha fora da convenção é denunciada', () => {
-    expect(report.unclassifiedCampaigns).toEqual(['[202601] [LP] [F] – Método SAL']);
+    expect(report.unclassifiedCampaigns).toEqual(['[202601] [LP] – Método SAL']);
   });
 
   it('KPI blended por segmento = Σ/Σ das linhas do segmento na janela', () => {
