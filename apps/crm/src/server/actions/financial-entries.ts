@@ -135,6 +135,26 @@ export async function cancelFinancialEntryAction(id: string): Promise<ActionResu
   return { ok: true };
 }
 
+// Trocar a conta de um lançamento já liquidado — funciona independente da
+// origem (inclusive lançamentos automáticos da ponte de receita, Fatia 8),
+// diferente de updateFinancialEntryAction (que é só pra manual). A conta é
+// um dado operacional/de bookkeeping, não parte da "verdade" da origem.
+export async function setFinancialEntryAccountAction(
+  id: string,
+  accountId: string,
+): Promise<ActionResult> {
+  await requireOwner();
+  if (!accountId) return { ok: false, error: 'Selecione a conta.' };
+
+  await db
+    .update(schema.financialEntries)
+    .set({ accountId, updatedAt: new Date() })
+    .where(eq(schema.financialEntries.id, id));
+
+  revalidatePath(FINANCEIRO_PATH);
+  return { ok: true };
+}
+
 export async function reopenFinancialEntryAction(id: string): Promise<ActionResult> {
   await requireOwner();
   await db

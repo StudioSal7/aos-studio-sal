@@ -5,6 +5,7 @@ import {
   cancelFinancialEntryAction,
   liquidateFinancialEntryAction,
   reopenFinancialEntryAction,
+  setFinancialEntryAccountAction,
 } from '@/server/actions/financial-entries';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -49,7 +50,7 @@ export function EntryRow({
   categories: { id: string; name: string; entryKind: 'receita' | 'despesa' }[];
   accounts: { id: string; name: string }[];
 }) {
-  const [mode, setMode] = useState<'view' | 'edit' | 'liquidate'>('view');
+  const [mode, setMode] = useState<'view' | 'edit' | 'liquidate' | 'account'>('view');
   const [pending, startTransition] = useTransition();
 
   const isManual = entry.originSource === 'manual';
@@ -115,6 +116,15 @@ export function EntryRow({
               </button>
             </>
           )}
+          {entry.status === 'liquidado' && (
+            <button
+              type="button"
+              onClick={() => setMode(mode === 'account' ? 'view' : 'account')}
+              className="text-micro text-ink-muted hover:text-ink"
+            >
+              trocar conta
+            </button>
+          )}
           {entry.status !== 'em_aberto' && (
             <button
               type="button"
@@ -127,6 +137,10 @@ export function EntryRow({
           )}
         </div>
       </div>
+
+      {mode === 'account' && (
+        <AccountReassignForm entryId={entry.id} accounts={accounts} onDone={() => setMode('view')} />
+      )}
 
       {mode === 'edit' && (
         <div className="px-5 pb-4">
@@ -151,6 +165,52 @@ export function EntryRow({
         <LiquidateForm entryId={entry.id} accounts={accounts} onDone={() => setMode('view')} />
       )}
     </div>
+  );
+}
+
+function AccountReassignForm({
+  entryId,
+  accounts,
+  onDone,
+}: {
+  entryId: string;
+  accounts: { id: string; name: string }[];
+  onDone: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(formData: FormData) {
+    setError(null);
+    const accountId = String(formData.get('accountId') ?? '');
+    const result = await setFinancialEntryAccountAction(entryId, accountId);
+    if (result.ok) onDone();
+    else setError(result.error);
+  }
+
+  return (
+    <form
+      action={(fd) => startTransition(() => handleSubmit(fd))}
+      className="flex items-end gap-3 border-t border-line bg-canvas px-5 py-4"
+    >
+      <div className="flex-1">
+        <label className="text-micro text-ink-muted">nova conta</label>
+        <Select name="accountId" required defaultValue={accounts[0]?.id}>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <Button type="submit" variant="solid" size="sm" disabled={pending}>
+        confirmar
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+        cancelar
+      </Button>
+      {error && <p className="text-micro text-clay">{error}</p>}
+    </form>
   );
 }
 

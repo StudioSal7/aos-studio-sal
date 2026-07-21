@@ -9,6 +9,7 @@ import { PeriodFilter } from '@/components/ui/period-filter';
 import { DATE_RANGE_OPTIONS } from '@/server/lib/date-range/index';
 import { CreateEntryButton } from './_components/create-entry-button';
 import { EntryRow } from './_components/entry-row';
+import { SyncRevenueBridgeButton } from './_components/sync-revenue-bridge-button';
 
 export default async function FinanceiroPage({
   searchParams,
@@ -45,7 +46,10 @@ export default async function FinanceiroPage({
   return (
     <div className="flex flex-col">
       <PageHeader title="financeiro.">
-        <PeriodFilter current={rangeOption} options={DATE_RANGE_OPTIONS} />
+        <div className="flex items-center gap-4">
+          <SyncRevenueBridgeButton />
+          <PeriodFilter current={rangeOption} options={DATE_RANGE_OPTIONS} />
+        </div>
       </PageHeader>
 
       <div className="space-y-8 p-8">
