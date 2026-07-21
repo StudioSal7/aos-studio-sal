@@ -17,6 +17,13 @@ import { roleplayMessages } from './roleplay-messages';
 import { roleplayScenarios } from './roleplay-scenarios';
 import { roleplaySessions } from './roleplay-sessions';
 import { users } from './users';
+import { salSales } from './sal-sales';
+import { financialAccounts } from './financial-accounts';
+import { financialCategories } from './financial-categories';
+import { financialEntries } from './financial-entries';
+import { financialRecurringTemplates } from './financial-recurring-templates';
+import { bankStatementImports } from './bank-statement-imports';
+import { bankStatementLines } from './bank-statement-lines';
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
   stage: one(leadStages, {
@@ -178,4 +185,86 @@ export const leadIntakeLogRelations = relations(leadIntakeLog, ({ one }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
   sdrLeads: many(leads, { relationName: 'sdrLeads' }),
   closerLeads: many(leads, { relationName: 'closerLeads' }),
+}));
+
+// ── Módulo financeiro ────────────────────────────────────────────────────────
+export const financialCategoriesRelations = relations(financialCategories, ({ one, many }) => ({
+  parent: one(financialCategories, {
+    fields: [financialCategories.parentId],
+    references: [financialCategories.id],
+    relationName: 'categoryParent',
+  }),
+  children: many(financialCategories, { relationName: 'categoryParent' }),
+  entries: many(financialEntries),
+}));
+
+export const financialEntriesRelations = relations(financialEntries, ({ one }) => ({
+  category: one(financialCategories, {
+    fields: [financialEntries.categoryId],
+    references: [financialCategories.id],
+  }),
+  account: one(financialAccounts, {
+    fields: [financialEntries.accountId],
+    references: [financialAccounts.id],
+  }),
+  hotmartSale: one(salSales, {
+    fields: [financialEntries.originHotmartSaleId],
+    references: [salSales.id],
+  }),
+  lead: one(leads, {
+    fields: [financialEntries.originLeadId],
+    references: [leads.id],
+  }),
+  recurringTemplate: one(financialRecurringTemplates, {
+    fields: [financialEntries.recurringTemplateId],
+    references: [financialRecurringTemplates.id],
+  }),
+  createdByUser: one(users, {
+    fields: [financialEntries.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const financialRecurringTemplatesRelations = relations(
+  financialRecurringTemplates,
+  ({ one, many }) => ({
+    category: one(financialCategories, {
+      fields: [financialRecurringTemplates.categoryId],
+      references: [financialCategories.id],
+    }),
+    account: one(financialAccounts, {
+      fields: [financialRecurringTemplates.accountId],
+      references: [financialAccounts.id],
+    }),
+    entries: many(financialEntries),
+  }),
+);
+
+export const financialAccountsRelations = relations(financialAccounts, ({ many }) => ({
+  entries: many(financialEntries),
+  statementImports: many(bankStatementImports),
+  statementLines: many(bankStatementLines),
+}));
+
+export const bankStatementImportsRelations = relations(bankStatementImports, ({ one, many }) => ({
+  account: one(financialAccounts, {
+    fields: [bankStatementImports.accountId],
+    references: [financialAccounts.id],
+  }),
+  lines: many(bankStatementLines),
+}));
+
+export const bankStatementLinesRelations = relations(bankStatementLines, ({ one }) => ({
+  import: one(bankStatementImports, {
+    fields: [bankStatementLines.importId],
+    references: [bankStatementImports.id],
+  }),
+  account: one(financialAccounts, {
+    fields: [bankStatementLines.accountId],
+    references: [financialAccounts.id],
+  }),
+  reconciledEntry: one(financialEntries, {
+    fields: [bankStatementLines.reconciledEntryId],
+    references: [financialEntries.id],
+  }),
 }));

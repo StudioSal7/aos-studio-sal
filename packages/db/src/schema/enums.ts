@@ -95,3 +95,42 @@ export const formFieldTypeEnum = pgEnum('form_field_type', [
   'sim_nao',
   'encerramento',
 ]);
+
+// ── Módulo financeiro (DRE + Fluxo de Caixa) — owner-only ────────────────────
+export const financialAccountKindEnum = pgEnum('financial_account_kind', [
+  'banco',
+  'caixa',
+  'carteira_digital',
+]);
+// receita entra; despesa sai. O sinal do valor vem daqui, não do amount.
+export const financialEntryKindEnum = pgEnum('financial_entry_kind', ['receita', 'despesa']);
+// Seção do DRE que a categoria alimenta (define a estrutura do relatório).
+export const dreSectionEnum = pgEnum('dre_section', [
+  'receita_bruta',
+  'deducao',
+  'imposto',
+  'custo',
+  'despesa_fixa',
+  'despesa_variavel',
+  'outra',
+]);
+// em_aberto = previsto (cashDate nulo); liquidado = dinheiro moveu; cancelado = ignorar.
+export const financialEntryStatusEnum = pgEnum('financial_entry_status', [
+  'em_aberto',
+  'liquidado',
+  'cancelado',
+]);
+// Origem do lançamento (rastreabilidade + idempotência anti-dupla-contagem).
+export const financialOriginSourceEnum = pgEnum('financial_origin_source', [
+  'manual',
+  'hotmart_sale',
+  'lead_paid',
+  'recurring',
+  'bank_reconciliation',
+]);
+export const bankStatementFormatEnum = pgEnum('bank_statement_format', ['ofx', 'csv']);
+export const bankStatementLineStatusEnum = pgEnum('bank_statement_line_status', [
+  'nao_conciliado',
+  'conciliado',
+  'ignorado',
+]);
