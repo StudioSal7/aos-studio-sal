@@ -21,3 +21,18 @@ export function weeklyConversions(values: number[]): Array<number | null> {
   }
   return out;
 }
+
+/**
+ * Direção da variação de um volume vs a semana anterior (seta discreta do
+ * grid semanal). `prev` ausente (1ª coluna do grid, sem semana anterior) →
+ * null, sem seta.
+ */
+export function weekDelta(
+  prev: number | undefined | null,
+  curr: number,
+): 'up' | 'down' | 'flat' | null {
+  if (prev === undefined || prev === null) return null;
+  if (curr > prev) return 'up';
+  if (curr < prev) return 'down';
+  return 'flat';
+}

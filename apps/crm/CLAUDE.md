@@ -46,6 +46,7 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `server/actions/search.ts` | `searchLeadsForPalette(query)` — reusa `searchLeads` do query builder; usado pelo Cmd+K |
 | `server/actions/forms.ts` | **owner-only** — `createFormAction`, `updateFormAction`, `deleteFormAction`, `duplicateFormAction`, `addFieldAction`, `updateFieldAction`, `deleteFieldAction`, `reorderFieldsAction` |
 | `server/actions/products.ts` | **owner-only** — `createProductAction`, `updateProductAction`, `setProductActiveAction` |
+| `server/actions/metric-targets.ts` | **owner-only** — `upsertMetricTargetAction`, `deleteMetricTargetAction` (metas do dashboard) |
 
 ---
 
@@ -58,6 +59,8 @@ Contexto específico do app CRM. Ver também o [CLAUDE.md raiz](../../CLAUDE.md)
 | `server/lib/form-answer-mapper/` | Puro | 14 passando |
 | `server/lib/first-contact-urgency/` | Puro | 13 passando |
 | `server/lib/first-contact-metric/` | Puro | 7 passando |
+| `server/lib/metric-registry/` | Puro | Catálogo de 9 métricas coloríveis do dashboard (chave = código) |
+| `server/lib/metric-target-evaluator/` | Puro | Semáforo `evaluateMetric`/`trafficLightGlyph` — meta = dado (`metric_targets`) |
 | `server/lib/lead-intake/` | Usa DB | Sem testes (compartilhado: form submit; webhook Respondi segue inline) |
 | `server/lib/stage-transition-validator/` | Puro | 8 passando |
 | `server/lib/legacy-csv-parser/` | Puro + fixtures | 32 passando |

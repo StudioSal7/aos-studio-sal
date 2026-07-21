@@ -13,6 +13,7 @@ export * from './lead-field-audit';
 export * from './lead-action-log';
 export * from './lead-intake-log';
 export * from './sal-sales';
+export * from './metric-targets';
 export * from './commercial-analyses';
 export * from './roleplay-scenarios';
 export * from './roleplay-sessions';

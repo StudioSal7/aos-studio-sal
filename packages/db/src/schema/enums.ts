@@ -111,3 +111,6 @@ export const formFieldTypeEnum = pgEnum('form_field_type', [
 // nunca auto-enviado. Um único status por ora; existe pra deixar espaço a
 // status futuros (ex: assinado) sem migration de tipo depois.
 export const contractStatusEnum = pgEnum('contract_status', ['rascunho']);
+
+// Metas do dashboard comercial — direção da comparação valor × meta.
+export const metricComparatorEnum = pgEnum('metric_comparator', ['gte', 'lte']);
