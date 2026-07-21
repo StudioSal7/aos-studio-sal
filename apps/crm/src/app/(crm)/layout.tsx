@@ -16,9 +16,6 @@ import {
   MessageSquareText,
   ListTodo,
   Dumbbell,
-  FileText,
-  FileSignature,
-  Package,
   type LucideIcon,
 } from 'lucide-react';
 import { requireAuth } from '@/server/auth';
@@ -53,27 +50,6 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
             <NavItem href="/revisao" label="para revisão." icon={Eye} />
             <NavItem href="/calendario" label="calendário." icon={Calendar} />
             <NavItem href="/saude" label="saúde dos dados." icon={Activity} />
-            {isOwner && (
-              <NavItem
-                href={'/admin/formularios' as Route<string>}
-                label="formulários."
-                icon={FileText}
-              />
-            )}
-            {isOwner && (
-              <NavItem
-                href={'/admin/produtos' as Route<string>}
-                label="produtos."
-                icon={Package}
-              />
-            )}
-            {isOwner && (
-              <NavItem
-                href={'/admin/contratos' as Route<string>}
-                label="contratos."
-                icon={FileSignature}
-              />
-            )}
             <NavItem href="/tarefas" label="tarefas." icon={ListTodo} />
           </CollapsibleNavGroup>
 
@@ -81,11 +57,11 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
             <NavItem href={"/analise/closer" as Route<string>} label="análise closer." icon={ClipboardCheck} />
             <NavItem href={"/analise/sdr" as Route<string>} label="análise sdr." icon={MessageSquareText} />
             <NavItem href={"/comercial/treino" as Route<string>} label="treino spin." icon={Dumbbell} />
-            {isOwner && <NavItem href="/vendas-sal" label="vendas sal." icon={ShoppingBag} />}
           </CollapsibleNavGroup>
 
-          <CollapsibleNavGroup label="marketing">
+          <CollapsibleNavGroup label="marketing e vendas">
             <NavItem href="/trafego" label="tráfego pago." icon={Target} />
+            {isOwner && <NavItem href="/vendas-sal" label="vendas sal." icon={ShoppingBag} />}
           </CollapsibleNavGroup>
         </nav>
 
