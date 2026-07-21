@@ -18,6 +18,7 @@ import {
   Dumbbell,
   FileText,
   Settings,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import { requireAuth } from '@/server/auth';
@@ -75,6 +76,7 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
 
           {isOwner && (
             <CollapsibleNavGroup label="financeiro">
+              <NavItem href={'/financeiro' as Route<string>} label="lançamentos." icon={Wallet} />
               <NavItem
                 href={'/financeiro/config' as Route<string>}
                 label="configuração."
