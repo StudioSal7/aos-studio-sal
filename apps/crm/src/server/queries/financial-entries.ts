@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lt, ne, sql } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import type { DateRange } from '@/server/lib/date-range/index';
@@ -58,6 +58,32 @@ export async function getDreLineInputs(range: DateRange): Promise<DreLineInput[]
     .where(and(...conditions));
 
   return rows;
+}
+
+// Contas em aberto (a pagar/a receber), ordenadas por vencimento — vencidas e
+// mais próximas primeiro; sem vencimento (dueDate nulo) vão para o fim.
+export async function getOpenFinancialEntries() {
+  return db
+    .select({
+      id: schema.financialEntries.id,
+      kind: schema.financialEntries.kind,
+      description: schema.financialEntries.description,
+      amountCents: schema.financialEntries.amountCents,
+      competenceDate: schema.financialEntries.competenceDate,
+      dueDate: schema.financialEntries.dueDate,
+      cashDate: schema.financialEntries.cashDate,
+      status: schema.financialEntries.status,
+      originSource: schema.financialEntries.originSource,
+      categoryId: schema.financialEntries.categoryId,
+      categoryName: schema.financialCategories.name,
+      accountId: schema.financialEntries.accountId,
+      accountName: schema.financialAccounts.name,
+    })
+    .from(schema.financialEntries)
+    .leftJoin(schema.financialCategories, eq(schema.financialEntries.categoryId, schema.financialCategories.id))
+    .leftJoin(schema.financialAccounts, eq(schema.financialEntries.accountId, schema.financialAccounts.id))
+    .where(eq(schema.financialEntries.status, 'em_aberto'))
+    .orderBy(sql`${schema.financialEntries.dueDate} is null`, asc(schema.financialEntries.dueDate));
 }
 
 export async function getFinancialEntryById(id: string) {
