@@ -1,0 +1,2 @@
+ALTER TABLE "financial_categories" ADD COLUMN "slug" text NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "financial_categories_slug_unique" ON "financial_categories" USING btree ("slug");

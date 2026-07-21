@@ -92,6 +92,13 @@
       "when": 1784659201899,
       "tag": "0012_financial_module",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784659849370,
+      "tag": "0013_financial_categories_slug",
+      "breakpoints": true
     }
   ]
 }
