@@ -23,4 +23,7 @@ export * from './form-fields';
 export * from './form-responses';
 export * from './bio-rate-limit';
 export * from './lead-contracts';
+export * from './meta-insights-daily';
+export * from './meta-sync-runs';
+export * from './meta-account-events';
 export * from './relations';

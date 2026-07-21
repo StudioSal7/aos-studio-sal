@@ -134,6 +134,13 @@
       "when": 1784598352292,
       "tag": "0018_metric_targets",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1784599402883,
+      "tag": "0019_meta_ads",
+      "breakpoints": true
     }
   ]
 }

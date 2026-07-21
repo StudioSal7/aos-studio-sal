@@ -23,7 +23,9 @@
     "fix-shifted-lead": "tsx --env-file=.env.local scripts/fix-shifted-lead.ts",
     "backfill-application-received-at": "tsx --env-file=.env.local scripts/backfill-application-received-at.ts",
     "backfill-first-contact-at": "tsx --env-file=.env.local scripts/backfill-first-contact-at.ts",
-    "upload-contract-templates": "tsx --env-file=.env.local scripts/upload-contract-templates.ts"
+    "upload-contract-templates": "tsx --env-file=.env.local scripts/upload-contract-templates.ts",
+    "meta-probe": "tsx --env-file=.env.local scripts/meta-probe.ts",
+    "meta-backfill": "tsx --env-file=.env.local scripts/meta-backfill.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

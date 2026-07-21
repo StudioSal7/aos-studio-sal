@@ -13,7 +13,9 @@
     "OPENAI_API_KEY",
     "EVOLUTION_API_URL",
     "EVOLUTION_API_KEY",
-    "EVOLUTION_INSTANCE"
+    "EVOLUTION_INSTANCE",
+    "META_ACCESS_TOKEN",
+    "META_AD_ACCOUNT_ID"
   ],
   "tasks": {
     "dev": {
