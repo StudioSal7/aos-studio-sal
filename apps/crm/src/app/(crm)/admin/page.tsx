@@ -1,6 +1,9 @@
 import { requireAuth } from '@/server/auth';
 import { redirect } from 'next/navigation';
 import { isNull } from 'drizzle-orm';
+import Link from 'next/link';
+import type { Route } from 'next';
+import { FileText, Package, FileSignature, type LucideIcon } from 'lucide-react';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import { PageHeader } from '@/components/ui/page-header';
@@ -61,6 +64,30 @@ export default async function AdminPage({
       <PageHeader title="admin." />
 
       <div className="space-y-12 p-8">
+        <section>
+          <h2 className="mb-4 text-h3 text-ink">áreas.</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <AdminAreaCard
+              href="/admin/formularios"
+              icon={FileText}
+              title="formulários."
+              desc="captação de leads — criar e editar formulários."
+            />
+            <AdminAreaCard
+              href="/admin/produtos"
+              icon={Package}
+              title="produtos."
+              desc="catálogo e preços usados no fechamento."
+            />
+            <AdminAreaCard
+              href="/admin/contratos"
+              icon={FileSignature}
+              title="contratos."
+              desc="templates de contrato por tipo de produto."
+            />
+          </div>
+        </section>
+
         <section>
           <h2 className="mb-4 text-h3 text-ink">usuários.</h2>
           <div className="mb-6 overflow-hidden border border-line bg-paper">
@@ -209,5 +236,30 @@ export default async function AdminPage({
         </section>
       </div>
     </div>
+  );
+}
+
+function AdminAreaCard({
+  href,
+  icon: Icon,
+  title,
+  desc,
+}: {
+  href: string;
+  icon: LucideIcon;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <Link
+      href={href as Route<string>}
+      className="flex flex-col gap-3 border border-line bg-paper p-5 hover:bg-canvas"
+    >
+      <Icon size={22} strokeWidth={1.5} className="text-ink-muted" />
+      <div>
+        <div className="text-body text-ink">{title}</div>
+        <p className="mt-1 text-micro text-ink-muted">{desc}</p>
+      </div>
+    </Link>
   );
 }
