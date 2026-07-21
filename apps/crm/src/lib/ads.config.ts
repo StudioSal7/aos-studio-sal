@@ -56,8 +56,11 @@ export const adsConfig: AdsConfig = {
   timezone: 'America/Sao_Paulo',
   currency: 'BRL',
   segments: [
-    { key: 'frio', match: ['frio', 'cold', 'aberto'] },
-    { key: 'quente', match: ['quente', 'rmkt', 'remarketing'] },
+    // Convenção de nome da conta Studio Sal: token `[F]`/`[Q]` no nome da campanha
+    // (ex.: "[202601] [ONGOING] [VENDAS] [LP] [F] - Método Sal"). Os termos-palavra
+    // (frio/cold/aberto/quente/rmkt) ficam como fallback pra outras convenções.
+    { key: 'frio', match: ['frio', 'cold', 'aberto', '[f]'] },
+    { key: 'quente', match: ['quente', 'rmkt', 'remarketing', '[q]'] },
   ],
   conversion: { event: 'offsite_conversion.fb_pixel_purchase', trackValue: true },
   targets: {
