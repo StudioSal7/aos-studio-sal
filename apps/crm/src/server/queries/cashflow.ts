@@ -2,6 +2,10 @@ import { and, eq, isNotNull } from 'drizzle-orm';
 import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import type { DateRange } from '@/server/lib/date-range/index';
+import type {
+  OpenEntryInput,
+  RecurringTemplateInput,
+} from '@/server/lib/cashflow-projection/index';
 
 export interface CashflowAccountRow {
   accountId: string;
@@ -79,5 +83,46 @@ export async function getCashflowRealized(range: DateRange): Promise<CashflowRea
     totalSaidasCents: rows.reduce((sum, r) => sum + r.saidasCents, 0),
     totalSaldoPeriodoCents: rows.reduce((sum, r) => sum + r.saldoPeriodoCents, 0),
     totalSaldoAtualCents: rows.reduce((sum, r) => sum + r.saldoAtualCents, 0),
+  };
+}
+
+export interface CashflowProjectionInputs {
+  startingBalanceCents: number;
+  openEntries: OpenEntryInput[];
+  recurringTemplates: RecurringTemplateInput[];
+}
+
+// Insumos para o módulo puro `cashflow-projection`: saldo atual agregado de
+// todas as contas + contas em aberto COM vencimento + recorrências ativas.
+export async function getCashflowProjectionInputs(): Promise<CashflowProjectionInputs> {
+  const realized = await getCashflowRealized({ from: null, to: null });
+
+  const openRows = await db
+    .select({
+      kind: schema.financialEntries.kind,
+      amountCents: schema.financialEntries.amountCents,
+      dueDate: schema.financialEntries.dueDate,
+    })
+    .from(schema.financialEntries)
+    .where(and(eq(schema.financialEntries.status, 'em_aberto'), isNotNull(schema.financialEntries.dueDate)));
+
+  const openEntries: OpenEntryInput[] = openRows
+    .filter((r): r is typeof r & { dueDate: string } => r.dueDate !== null)
+    .map((r) => ({ kind: r.kind, amountCents: r.amountCents, dueDate: r.dueDate }));
+
+  const recurringRows = await db
+    .select({
+      kind: schema.financialRecurringTemplates.kind,
+      amountCents: schema.financialRecurringTemplates.amountCents,
+      startDate: schema.financialRecurringTemplates.startDate,
+      endDate: schema.financialRecurringTemplates.endDate,
+    })
+    .from(schema.financialRecurringTemplates)
+    .where(eq(schema.financialRecurringTemplates.active, true));
+
+  return {
+    startingBalanceCents: realized.totalSaldoAtualCents,
+    openEntries,
+    recurringTemplates: recurringRows,
   };
 }
