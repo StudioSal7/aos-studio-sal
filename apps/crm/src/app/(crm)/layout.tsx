@@ -77,6 +77,7 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
           {isOwner && (
             <CollapsibleNavGroup label="financeiro">
               <NavItem href={'/financeiro' as Route<string>} label="lançamentos." icon={Wallet} />
+              <NavItem href={'/financeiro/dre' as Route<string>} label="dre." icon={LineChart} />
               <NavItem
                 href={'/financeiro/config' as Route<string>}
                 label="configuração."
