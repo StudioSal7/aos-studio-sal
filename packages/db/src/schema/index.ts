@@ -25,4 +25,5 @@ export * from './financial-recurring-templates';
 export * from './financial-entries';
 export * from './bank-statement-imports';
 export * from './bank-statement-lines';
+export * from './financial-categorization-rules';
 export * from './relations';

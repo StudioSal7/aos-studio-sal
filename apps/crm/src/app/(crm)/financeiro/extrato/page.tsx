@@ -1,21 +1,28 @@
 import { redirect } from 'next/navigation';
 import { requireAuth } from '@/server/auth';
 import { getFinancialAccounts, getFinancialCategories } from '@/server/queries/financial';
-import { getBankStatementLines, getOpenEntriesForReconciliation } from '@/server/queries/bank-statement';
+import {
+  getBankStatementLines,
+  getCategorizationRules,
+  getOpenEntriesForReconciliation,
+} from '@/server/queries/bank-statement';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { UploadStatementForm } from './_components/upload-statement-form';
 import { StatementLineRow } from './_components/statement-line-row';
+import { CreateRuleForm } from './_components/create-rule-form';
+import { ToggleRuleActiveButton } from './_components/toggle-rule-active-button';
 
 export default async function ExtratoPage() {
   const auth = await requireAuth();
   if (auth.role !== 'owner') redirect('/kanban');
 
-  const [accounts, categories, lines, openEntries] = await Promise.all([
+  const [accounts, categories, lines, openEntries, rules] = await Promise.all([
     getFinancialAccounts(),
     getFinancialCategories(),
     getBankStatementLines(),
     getOpenEntriesForReconciliation(),
+    getCategorizationRules(),
   ]);
 
   const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
@@ -56,6 +63,36 @@ export default async function ExtratoPage() {
             </div>
           )}
         </Card>
+
+        <section>
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-h3 text-ink">categorização automática (opcional).</h2>
+            <CreateRuleForm categories={categoryOptions} />
+          </div>
+          <Card className="p-0">
+            {rules.length === 0 ? (
+              <p className="px-5 py-4 text-micro text-ink-muted">
+                Nenhuma regra ainda — crie regras para sugerir a categoria de novas linhas do
+                extrato automaticamente (ex.: descrição contém &quot;netflix&quot; → categoria
+                streaming).
+              </p>
+            ) : (
+              <div className="divide-y divide-line">
+                {rules.map((rule) => (
+                  <div key={rule.id} className="flex items-center justify-between px-5 py-3">
+                    <div>
+                      <p className="text-body text-ink">&quot;{rule.pattern}&quot;</p>
+                      <p className="text-micro text-ink-muted normal-case tracking-normal">
+                        {rule.categoryName ?? '—'} · prioridade {rule.priority}
+                      </p>
+                    </div>
+                    <ToggleRuleActiveButton id={rule.id} active={rule.active} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </section>
       </div>
     </div>
   );

@@ -21,6 +21,7 @@ export type StatementLineData = {
   description: string;
   status: 'nao_conciliado' | 'conciliado' | 'ignorado';
   importFileName: string | null;
+  suggestedCategoryId: string | null;
 };
 
 function formatDateBR(d: Date | string): string {
@@ -109,6 +110,7 @@ export function StatementLineRow({
           lineId={line.id}
           description={line.description}
           categories={categories.filter((c) => c.entryKind === kind)}
+          suggestedCategoryId={line.suggestedCategoryId}
           onDone={() => setMode('view')}
         />
       )}
@@ -174,15 +176,21 @@ function CreateFromLineForm({
   lineId,
   description,
   categories,
+  suggestedCategoryId,
   onDone,
 }: {
   lineId: string;
   description: string;
   categories: { id: string; name: string }[];
+  suggestedCategoryId: string | null;
   onDone: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const hasSuggestion =
+    suggestedCategoryId !== null && categories.some((c) => c.id === suggestedCategoryId);
+  const defaultCategoryId = hasSuggestion ? suggestedCategoryId! : categories[0]?.id;
 
   async function handleSubmit(formData: FormData) {
     setError(null);
@@ -205,8 +213,10 @@ function CreateFromLineForm({
         <Input name="description" defaultValue={description} />
       </div>
       <div className="flex-1">
-        <label className="text-micro text-ink-muted">categoria</label>
-        <Select name="categoryId" required defaultValue={categories[0]?.id}>
+        <label className="text-micro text-ink-muted">
+          categoria{hasSuggestion && <span className="text-leaf"> · sugestão automática</span>}
+        </label>
+        <Select name="categoryId" required defaultValue={defaultCategoryId}>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}

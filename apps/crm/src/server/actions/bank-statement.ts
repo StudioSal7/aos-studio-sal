@@ -10,6 +10,7 @@ import { db } from '@repo/db/client';
 import * as schema from '@repo/db/schema';
 import { requireAuth, requireRole } from '@/server/auth';
 import { parseCsvStatement, parseOfxStatement } from '@/server/lib/ofx-parser/index';
+import { matchCategorizationRule } from '@/server/lib/categorization-rule-matcher/index';
 import type { ActionResult } from './leads';
 
 const EXTRATO_PATH = '/financeiro/extrato';
@@ -64,8 +65,20 @@ export async function importBankStatementAction(
     })
     .returning({ id: schema.bankStatementImports.id });
 
+  // Categorização automática (Fatia 10, opcional) — só um palpite; o owner
+  // sempre pode trocar antes de criar o lançamento.
+  const activeRules = await db
+    .select({
+      pattern: schema.financialCategorizationRules.pattern,
+      categoryId: schema.financialCategorizationRules.categoryId,
+      priority: schema.financialCategorizationRules.priority,
+    })
+    .from(schema.financialCategorizationRules)
+    .where(eq(schema.financialCategorizationRules.active, true));
+
   let imported = 0;
   for (const t of result.transactions) {
+    const suggestedCategoryId = matchCategorizationRule(t.description, activeRules);
     const inserted = await db
       .insert(schema.bankStatementLines)
       .values({
@@ -76,6 +89,7 @@ export async function importBankStatementAction(
         description: t.description,
         fitid: t.fitid,
         dedupHash: t.dedupHash,
+        suggestedCategoryId,
         rawRow: { source: format },
       })
       .onConflictDoNothing({ target: schema.bankStatementLines.dedupHash })
@@ -185,6 +199,41 @@ export async function ignoreLineAction(lineId: string): Promise<ActionResult> {
     .update(schema.bankStatementLines)
     .set({ status: 'ignorado' })
     .where(eq(schema.bankStatementLines.id, lineId));
+
+  revalidatePath(EXTRATO_PATH);
+  return { ok: true };
+}
+
+// ── Regras de categorização automática (Fatia 10, opcional) ─────────────────
+
+export async function createCategorizationRuleAction(input: {
+  pattern: string;
+  categoryId: string;
+  priority: number;
+}): Promise<ActionResult> {
+  await requireOwner();
+  const pattern = input.pattern.trim();
+  if (!pattern) return { ok: false, error: 'Padrão obrigatório.' };
+
+  await db.insert(schema.financialCategorizationRules).values({
+    pattern,
+    categoryId: input.categoryId,
+    priority: input.priority,
+  });
+
+  revalidatePath(EXTRATO_PATH);
+  return { ok: true };
+}
+
+export async function toggleCategorizationRuleActiveAction(
+  id: string,
+  active: boolean,
+): Promise<ActionResult> {
+  await requireOwner();
+  await db
+    .update(schema.financialCategorizationRules)
+    .set({ active })
+    .where(eq(schema.financialCategorizationRules.id, id));
 
   revalidatePath(EXTRATO_PATH);
   return { ok: true };

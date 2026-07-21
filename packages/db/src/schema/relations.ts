@@ -24,6 +24,7 @@ import { financialEntries } from './financial-entries';
 import { financialRecurringTemplates } from './financial-recurring-templates';
 import { bankStatementImports } from './bank-statement-imports';
 import { bankStatementLines } from './bank-statement-lines';
+import { financialCategorizationRules } from './financial-categorization-rules';
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
   stage: one(leadStages, {
@@ -196,6 +197,7 @@ export const financialCategoriesRelations = relations(financialCategories, ({ on
   }),
   children: many(financialCategories, { relationName: 'categoryParent' }),
   entries: many(financialEntries),
+  categorizationRules: many(financialCategorizationRules),
 }));
 
 export const financialEntriesRelations = relations(financialEntries, ({ one }) => ({
@@ -267,4 +269,18 @@ export const bankStatementLinesRelations = relations(bankStatementLines, ({ one 
     fields: [bankStatementLines.reconciledEntryId],
     references: [financialEntries.id],
   }),
+  suggestedCategory: one(financialCategories, {
+    fields: [bankStatementLines.suggestedCategoryId],
+    references: [financialCategories.id],
+  }),
 }));
+
+export const financialCategorizationRulesRelations = relations(
+  financialCategorizationRules,
+  ({ one }) => ({
+    category: one(financialCategories, {
+      fields: [financialCategorizationRules.categoryId],
+      references: [financialCategories.id],
+    }),
+  }),
+);

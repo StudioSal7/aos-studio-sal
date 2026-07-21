@@ -99,6 +99,13 @@
       "when": 1784659849370,
       "tag": "0013_financial_categories_slug",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784671588671,
+      "tag": "0014_categorization_rules",
+      "breakpoints": true
     }
   ]
 }

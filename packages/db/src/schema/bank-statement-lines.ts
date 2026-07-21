@@ -2,6 +2,7 @@ import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } fr
 import { bankStatementLineStatusEnum } from './enums';
 import { bankStatementImports } from './bank-statement-imports';
 import { financialAccounts } from './financial-accounts';
+import { financialCategories } from './financial-categories';
 import { financialEntries } from './financial-entries';
 
 // Linhas do extrato importado. `amountCents` COM sinal (+entrada / −saída).
@@ -23,6 +24,12 @@ export const bankStatementLines = pgTable(
     fitid: text('fitid'),
     dedupHash: text('dedup_hash').notNull(),
     reconciledEntryId: uuid('reconciled_entry_id').references(() => financialEntries.id, {
+      onDelete: 'set null',
+    }),
+    // Sugestão de categoria (Fatia 10, opcional) — aplicada na importação por
+    // regra de padrão na descrição. Só um palpite pré-preenchido; o owner
+    // sempre pode trocar antes de criar o lançamento.
+    suggestedCategoryId: uuid('suggested_category_id').references(() => financialCategories.id, {
       onDelete: 'set null',
     }),
     status: bankStatementLineStatusEnum('status').notNull().default('nao_conciliado'),
