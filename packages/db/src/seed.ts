@@ -9,9 +9,16 @@
  * Run with: pnpm db:seed
  */
 
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from './client';
-import { leadLossReasons, leadSources, leadStages, roleplayScenarios } from './schema/index';
+import {
+  financialAccounts,
+  financialCategories,
+  leadLossReasons,
+  leadSources,
+  leadStages,
+  roleplayScenarios,
+} from './schema/index';
 
 const STAGES = [
   { slug: 'application_received', displayName: 'Aplicação recebida', position: 1, kind: 'open' as const },
@@ -91,6 +98,62 @@ const ROLEPLAY_SCENARIOS = [
   },
 ];
 
+// Plano de contas inicial (Fatia 2 do módulo financeiro) — ponto de partida
+// editável pelo owner via /financeiro/config. `isSystem: true` protege os
+// grupos-raiz de exclusão; `active` é o botão de "desligar" prático.
+// Estrutura: 7 grupos (um por seção do DRE) + categorias-folha onde os
+// lançamentos de fato são categorizados.
+type CategorySeed = {
+  slug: string;
+  name: string;
+  entryKind: 'receita' | 'despesa';
+  dreSection:
+    | 'receita_bruta'
+    | 'deducao'
+    | 'imposto'
+    | 'custo'
+    | 'despesa_fixa'
+    | 'despesa_variavel'
+    | 'outra';
+  parentSlug: string | null;
+  sortOrder: number;
+};
+
+const FINANCIAL_CATEGORY_GROUPS: CategorySeed[] = [
+  { slug: 'receita-bruta', name: 'Receita Bruta', entryKind: 'receita', dreSection: 'receita_bruta', parentSlug: null, sortOrder: 1 },
+  { slug: 'deducoes', name: 'Deduções', entryKind: 'despesa', dreSection: 'deducao', parentSlug: null, sortOrder: 2 },
+  { slug: 'impostos', name: 'Impostos', entryKind: 'despesa', dreSection: 'imposto', parentSlug: null, sortOrder: 3 },
+  { slug: 'custos', name: 'Custos', entryKind: 'despesa', dreSection: 'custo', parentSlug: null, sortOrder: 4 },
+  { slug: 'despesas-fixas', name: 'Despesas Fixas', entryKind: 'despesa', dreSection: 'despesa_fixa', parentSlug: null, sortOrder: 5 },
+  { slug: 'despesas-variaveis', name: 'Despesas Variáveis', entryKind: 'despesa', dreSection: 'despesa_variavel', parentSlug: null, sortOrder: 6 },
+  { slug: 'outras', name: 'Outras', entryKind: 'despesa', dreSection: 'outra', parentSlug: null, sortOrder: 7 },
+];
+
+const FINANCIAL_CATEGORY_LEAVES: CategorySeed[] = [
+  // Receita bruta
+  { slug: 'receita-hotmart', name: 'Vendas Hotmart (curso)', entryKind: 'receita', dreSection: 'receita_bruta', parentSlug: 'receita-bruta', sortOrder: 1 },
+  { slug: 'receita-mentoria', name: 'Mentorias e Consultorias', entryKind: 'receita', dreSection: 'receita_bruta', parentSlug: 'receita-bruta', sortOrder: 2 },
+  { slug: 'receita-outras-fontes', name: 'Outras receitas', entryKind: 'receita', dreSection: 'receita_bruta', parentSlug: 'receita-bruta', sortOrder: 3 },
+  // Deduções
+  { slug: 'deducao-taxas-plataforma', name: 'Taxas de plataforma / gateway', entryKind: 'despesa', dreSection: 'deducao', parentSlug: 'deducoes', sortOrder: 1 },
+  { slug: 'deducao-reembolsos', name: 'Reembolsos e cancelamentos', entryKind: 'despesa', dreSection: 'deducao', parentSlug: 'deducoes', sortOrder: 2 },
+  // Impostos (linha simplificada — DRE gerencial puro, sem regra fiscal)
+  { slug: 'imposto-simplificado', name: 'Impostos (linha simplificada)', entryKind: 'despesa', dreSection: 'imposto', parentSlug: 'impostos', sortOrder: 1 },
+  // Custos
+  { slug: 'custo-entrega-produto', name: 'Custo de entrega do produto', entryKind: 'despesa', dreSection: 'custo', parentSlug: 'custos', sortOrder: 1 },
+  { slug: 'custo-comissoes-parcerias', name: 'Comissões e parcerias', entryKind: 'despesa', dreSection: 'custo', parentSlug: 'custos', sortOrder: 2 },
+  // Despesas fixas
+  { slug: 'despesa-fixa-equipe-prolabore', name: 'Equipe e pró-labore', entryKind: 'despesa', dreSection: 'despesa_fixa', parentSlug: 'despesas-fixas', sortOrder: 1 },
+  { slug: 'despesa-fixa-ferramentas-assinaturas', name: 'Ferramentas e assinaturas', entryKind: 'despesa', dreSection: 'despesa_fixa', parentSlug: 'despesas-fixas', sortOrder: 2 },
+  { slug: 'despesa-fixa-infraestrutura', name: 'Aluguel e infraestrutura', entryKind: 'despesa', dreSection: 'despesa_fixa', parentSlug: 'despesas-fixas', sortOrder: 3 },
+  // Despesas variáveis — 'marketing-trafego' é a categoria que recebe a futura
+  // ponte Meta Ads (fase posterior); já existe aqui como ponto de chegada.
+  { slug: 'despesa-variavel-marketing-trafego', name: 'Marketing e tráfego pago', entryKind: 'despesa', dreSection: 'despesa_variavel', parentSlug: 'despesas-variaveis', sortOrder: 1 },
+  { slug: 'despesa-variavel-outras', name: 'Outras despesas variáveis', entryKind: 'despesa', dreSection: 'despesa_variavel', parentSlug: 'despesas-variaveis', sortOrder: 2 },
+  // Outras (catch-all)
+  { slug: 'outra-despesa-diversa', name: 'Despesas diversas', entryKind: 'despesa', dreSection: 'outra', parentSlug: 'outras', sortOrder: 1 },
+];
+
 async function seed() {
   console.warn('Seeding lead_stages...');
   for (const stage of STAGES) {
@@ -125,6 +188,57 @@ async function seed() {
       .insert(roleplayScenarios)
       .values(scenario)
       .onConflictDoNothing({ target: roleplayScenarios.name });
+  }
+
+  console.warn('Seeding financial_categories (grupos)...');
+  for (const cat of FINANCIAL_CATEGORY_GROUPS) {
+    await db
+      .insert(financialCategories)
+      .values({
+        slug: cat.slug,
+        name: cat.name,
+        entryKind: cat.entryKind,
+        dreSection: cat.dreSection,
+        parentId: null,
+        sortOrder: cat.sortOrder,
+        isSystem: true,
+      })
+      .onConflictDoNothing({ target: financialCategories.slug });
+  }
+
+  console.warn('Seeding financial_categories (categorias)...');
+  for (const cat of FINANCIAL_CATEGORY_LEAVES) {
+    const [parent] = await db
+      .select({ id: financialCategories.id })
+      .from(financialCategories)
+      .where(eq(financialCategories.slug, cat.parentSlug!))
+      .limit(1);
+    if (!parent) {
+      throw new Error(`Grupo pai '${cat.parentSlug}' não encontrado para a categoria '${cat.slug}'`);
+    }
+    await db
+      .insert(financialCategories)
+      .values({
+        slug: cat.slug,
+        name: cat.name,
+        entryKind: cat.entryKind,
+        dreSection: cat.dreSection,
+        parentId: parent.id,
+        sortOrder: cat.sortOrder,
+        isSystem: true,
+      })
+      .onConflictDoNothing({ target: financialCategories.slug });
+  }
+
+  console.warn('Seeding financial_accounts (conta default)...');
+  const [existingAccount] = await db.select({ id: financialAccounts.id }).from(financialAccounts).limit(1);
+  if (!existingAccount) {
+    await db.insert(financialAccounts).values({
+      name: 'Conta principal',
+      kind: 'banco',
+      openingBalanceCents: 0,
+      active: true,
+    });
   }
 
   console.warn('✅ Seed complete.');
