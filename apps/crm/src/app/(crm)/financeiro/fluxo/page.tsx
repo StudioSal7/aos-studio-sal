@@ -11,6 +11,7 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { PeriodFilter } from '@/components/ui/period-filter';
+import { ProjectionChart } from './_components/projection-chart';
 
 const PROJECTION_HORIZON_MONTHS = 6;
 
@@ -129,6 +130,16 @@ export default async function FluxoDeCaixaPage({
             Saldo atual + contas em aberto por vencimento + recorrências ativas, projetados por{' '}
             {PROJECTION_HORIZON_MONTHS} meses.
           </p>
+          <Card className="mb-6 min-w-0 overflow-hidden">
+            <ProjectionChart
+              data={projection.months.map((m) => ({
+                label: formatMonthLabel(m.month),
+                entradas: m.entradasCents / 100,
+                saidas: m.saidasCents / 100,
+                saldo: m.saldoFinalCents / 100,
+              }))}
+            />
+          </Card>
           <Card className="min-w-0 overflow-hidden p-0">
             <table className="w-full">
               <thead>
